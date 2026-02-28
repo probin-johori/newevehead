@@ -4,8 +4,7 @@ import { TopBar } from "@/components/TopBar";
 import { useMockData, EventStatus } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ProgressBar } from "@/components/ProgressBar";
-import { Plus, MapPin, CalendarDots } from "@phosphor-icons/react";
+import { Plus, MapPin, CalendarDots, CaretRight } from "@phosphor-icons/react";
 
 const filters: { label: string; value: EventStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -26,8 +25,8 @@ export default function EventsPage() {
 
   return (
     <>
-      <TopBar title="Events" />
-      <div className="p-6 space-y-4">
+      <TopBar title="Events" subtitle={`${events.length} events`} />
+      <div className="p-6 max-w-[960px] space-y-5">
         {slotsWarning && (
           <div className="rounded-lg border border-warning/30 bg-amber-50 px-4 py-3 text-sm text-warning">
             ⚠️ You have 1 event slot remaining. Consider upgrading your plan.
@@ -39,7 +38,7 @@ export default function EventsPage() {
             {filters.map(f => (
               <button key={f.value} onClick={() => setFilter(f.value)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                  filter === f.value ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  filter === f.value ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-muted"
                 }`}>
                 {f.label}
               </button>
@@ -48,55 +47,75 @@ export default function EventsPage() {
           <button
             disabled={slotsExhausted}
             title={slotsExhausted ? "All event slots are used. Upgrade to create more events." : ""}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <Plus size={16} /> New Event
+            <Plus size={15} /> New Event
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {filtered.map(ev => {
-            const poc = getProfile(ev.poc_id);
-            const depts = getDeptsByEvent(ev.id);
-            const evTasks = tasks.filter(t => t.event_id === ev.id);
-            const done = evTasks.filter(t => t.status === "completed").length;
-            const pct = evTasks.length > 0 ? Math.round((done / evTasks.length) * 100) : 0;
-            const isMember = currentUser.role === "dept_member";
+        {/* Table view */}
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Location</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Start Date</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">End Date</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">POC</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Depts</th>
+                {currentUser.role !== "dept_member" && (
+                  <th className="px-4 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Budget</th>
+                )}
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(ev => {
+                const poc = getProfile(ev.poc_id);
+                const depts = getDeptsByEvent(ev.id);
+                const evTasks = tasks.filter(t => t.event_id === ev.id);
+                const done = evTasks.filter(t => t.status === "completed").length;
 
-            return (
-              <div
-                key={ev.id}
-                onClick={() => navigate(`/events/${ev.id}`)}
-                className="cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <StatusBadge status={ev.status} />
-                </div>
-                <h3 className="text-xl font-serif mb-2">{ev.name}</h3>
-                <div className="space-y-1.5 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center gap-1.5"><MapPin size={14} />{ev.location}</div>
-                  <div className="flex items-center gap-1.5"><CalendarDots size={14} />{ev.start_date} → {ev.end_date}</div>
-                  {poc && (
-                    <div className="flex items-center gap-1.5">
-                      <UserAvatar name={poc.name} color={poc.avatar_color} size="sm" />
-                      <span>{poc.name}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mb-2">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{done}/{evTasks.length} tasks</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <ProgressBar value={done} max={evTasks.length} />
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{depts.length} departments</span>
-                  {!isMember && <span>Budget: ₹{(ev.estimated_budget / 1000).toFixed(0)}K</span>}
-                </div>
-              </div>
-            );
-          })}
+                return (
+                  <tr
+                    key={ev.id}
+                    onClick={() => navigate(`/events/${ev.id}`)}
+                    className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-foreground">{ev.name}</span>
+                    </td>
+                    <td className="px-4 py-3"><StatusBadge status={ev.status} /></td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className="flex items-center gap-1"><MapPin size={13} />{ev.location}</span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(ev.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(ev.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                    <td className="px-4 py-3">
+                      {poc && (
+                        <div className="flex items-center gap-1.5">
+                          <UserAvatar name={poc.name} color={poc.avatar_color} size="sm" />
+                          <span className="text-sm">{poc.name}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{done}/{evTasks.length}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{depts.length}</td>
+                    {currentUser.role !== "dept_member" && (
+                      <td className="px-4 py-3 text-right text-muted-foreground tabular-nums">₹{(ev.estimated_budget / 1000).toFixed(0)}K</td>
+                    )}
+                    <td className="px-4 py-3"><CaretRight size={14} className="text-muted-foreground" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <p className="text-center text-sm text-muted-foreground py-8">No events match your filter.</p>
+          )}
         </div>
       </div>
     </>

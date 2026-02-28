@@ -1,15 +1,18 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { TopBar } from "@/components/TopBar";
 import { useMockData } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { FeatureLockBanner } from "@/components/FeatureLockBanner";
-import { FileText, ArrowRight } from "@phosphor-icons/react";
+import { FileText, CaretRight, X } from "@phosphor-icons/react";
 
 export default function BillingPage() {
   const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan } = useMockData();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
+  const [selectedBill, setSelectedBill] = useState<string | null>(null);
 
   if (isFreePlan) {
     return <><TopBar title="Billing" /><div className="p-6"><FeatureLockBanner /></div></>;
@@ -25,56 +28,37 @@ export default function BillingPage() {
   const pendingTotal = bills.filter(b => b.status === "pending" || b.status === "dept-verified").reduce((s, b) => s + b.amount, 0);
   const advanceTotal = bills.reduce((s, b) => s + b.advance_amount, 0);
 
+  const bill = selectedBill ? bills.find(b => b.id === selectedBill) : null;
+
   return (
     <>
-      <TopBar title="Billing" />
-      <div className="p-6 space-y-5">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground">Total Settled</p>
-            <p className="mt-1 text-3xl font-serif">₹{settledTotal.toLocaleString()}</p>
+      <TopBar title="Billing" subtitle={`${bills.length} bills`} />
+      <div className="p-6 max-w-[960px] space-y-5">
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-border p-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Total Settled</p>
+            <p className="text-xl font-semibold mt-1 tabular-nums">₹{settledTotal.toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground">Pending Amount</p>
-            <p className="mt-1 text-3xl font-serif">₹{pendingTotal.toLocaleString()}</p>
+          <div className="rounded-xl border border-border p-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Pending Amount</p>
+            <p className="text-xl font-semibold mt-1 tabular-nums">₹{pendingTotal.toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground">Advances Given</p>
-            <p className="mt-1 text-3xl font-serif">₹{advanceTotal.toLocaleString()}</p>
-          </div>
-        </div>
-
-        {/* Flow Explainer */}
-        <div className="rounded-xl border border-border bg-secondary/30 p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">How billing works</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-1 font-medium">1</span>
-            <span>Advance credited</span>
-            <ArrowRight size={12} />
-            <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-1 font-medium">2</span>
-            <span>Member pays vendor</span>
-            <ArrowRight size={12} />
-            <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-1 font-medium">3</span>
-            <span>Bill uploaded</span>
-            <ArrowRight size={12} />
-            <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-1 font-medium">4</span>
-            <span>Dept Head verifies</span>
-            <ArrowRight size={12} />
-            <span className="rounded-full bg-primary text-primary-foreground px-2.5 py-1 font-medium">5</span>
-            <span>Finance settles</span>
+          <div className="rounded-xl border border-border p-4">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Advances Given</p>
+            <p className="text-xl font-semibold mt-1 tabular-nums">₹{advanceTotal.toLocaleString()}</p>
           </div>
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-3">
           <select value={eventFilter} onChange={e => setEventFilter(e.target.value)}
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm pr-8">
+            className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm pr-8 focus:outline-none focus:border-foreground/30">
             <option value="all">All Events</option>
             {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-input bg-background px-3 py-2 text-sm pr-8">
+            className="rounded-lg border border-border bg-secondary px-3 py-2 text-sm pr-8 focus:outline-none focus:border-foreground/30">
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="dept-verified">Dept Verified</option>
@@ -83,85 +67,87 @@ export default function BillingPage() {
           </select>
         </div>
 
-        {/* Bill Cards */}
-        <div className="space-y-4">
-          {filtered.map(b => {
-            const dept = getDepartment(b.dept_id);
-            const ev = getEvent(b.event_id);
-            const submitter = getProfile(b.submitted_by);
-            const steps = [
-              { label: "Advance", done: b.advance_status !== "not-given" },
-              { label: "Bill Uploaded", done: true },
-              { label: "Dept Verified", done: b.status === "dept-verified" || b.status === "settled" },
-              { label: "Finance Settled", done: b.status === "settled" },
-            ];
-            return (
-              <div key={b.id} className="rounded-xl border border-border bg-card p-5 shadow-sm hover:shadow-md transition-all">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-base font-serif">{b.vendor_name}</h4>
-                      <StatusBadge status={b.status} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">{b.description}</p>
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      {dept && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">{dept.name}</span>}
-                      {ev && <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">{ev.name}</span>}
-                      <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px]">INV: {b.invoice_number}</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-2xl font-serif">₹{b.amount.toLocaleString()}</p>
-                    <p className="text-[11px] text-muted-foreground">Advance: ₹{b.advance_amount.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                {/* Pipeline */}
-                <div className="flex items-center gap-1 mb-4">
-                  {steps.map((s, i) => (
-                    <div key={i} className="flex items-center gap-1">
-                      <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                        s.done ? "bg-accent-light text-primary" : "bg-secondary text-muted-foreground"
-                      }`}>
-                        <div className={`h-2 w-2 rounded-full ${s.done ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                        {s.label}
-                      </div>
-                      {i < steps.length - 1 && <div className="h-px w-3 bg-border" />}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <div className="flex items-center gap-2">
-                    {submitter && <UserAvatar name={submitter.name} color={submitter.avatar_color} size="sm" />}
-                    <div>
-                      <p className="text-[11px] text-muted-foreground">Submitted by {submitter?.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{new Date(b.submitted_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {b.bill_file_url && (
-                      <span className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer">
-                        <FileText size={14} /> {b.bill_file_url}
-                      </span>
-                    )}
-                    {b.status === "pending" && currentUser.role === "dept_head" && (
-                      <button className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">Verify</button>
-                    )}
-                    {b.status === "dept-verified" && currentUser.role === "sa" && (
-                      <button className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">Settle</button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        {/* Table */}
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-right text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Invoice</th>
+                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Submitted</th>
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(b => {
+                const dept = getDepartment(b.dept_id);
+                const ev = getEvent(b.event_id);
+                return (
+                  <tr key={b.id} onClick={() => setSelectedBill(b.id)} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/50 transition-colors">
+                    <td className="px-4 py-3 font-medium">{b.vendor_name}</td>
+                    <td className="px-4 py-3 text-muted-foreground cursor-pointer hover:text-foreground" onClick={e => { e.stopPropagation(); navigate(`/events/${b.event_id}`); }}>{ev?.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{dept?.name}</td>
+                    <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
+                    <td className="px-4 py-3 text-right tabular-nums font-medium">₹{b.amount.toLocaleString()}</td>
+                    <td className="px-4 py-3">{b.bill_file_url && <span className="flex items-center gap-1 text-xs text-accent-mid"><FileText size={13} /> {b.invoice_number}</span>}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(b.submitted_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3"><CaretRight size={14} className="text-muted-foreground" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
           {filtered.length === 0 && (
             <p className="text-center text-sm text-muted-foreground py-8">No bills match your filters.</p>
           )}
         </div>
       </div>
+
+      {/* Bill Detail Modal */}
+      {bill && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedBill(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-2xl bg-card border border-border p-6 shadow-[0_8px_40px_rgba(0,0,0,0.12)] space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">{bill.vendor_name}</h3>
+                <button onClick={() => setSelectedBill(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
+              <p className="text-sm text-muted-foreground">{bill.description}</p>
+              <div className="grid grid-cols-2 gap-4 text-sm border-t border-border pt-4">
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Amount</p><p className="font-semibold text-lg">₹{bill.amount.toLocaleString()}</p></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Advance</p><p className="font-semibold text-lg">₹{bill.advance_amount.toLocaleString()}</p></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</p><StatusBadge status={bill.status} /></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Advance Status</p><StatusBadge status={bill.advance_status} /></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p><button onClick={() => { setSelectedBill(null); navigate(`/events/${bill.event_id}`); }} className="text-sm hover:text-accent-mid">{getEvent(bill.event_id)?.name}</button></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name}</p></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Invoice #</p><p>{bill.invoice_number}</p></div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted By</p>{(() => { const s = getProfile(bill.submitted_by); return s ? <div className="flex items-center gap-1.5"><UserAvatar name={s.name} color={s.avatar_color} size="sm" /><span>{s.name}</span></div> : null; })()}</div>
+                <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted At</p><p>{new Date(bill.submitted_at).toLocaleDateString()}</p></div>
+                {bill.dept_verified_at && <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Verified At</p><p>{new Date(bill.dept_verified_at).toLocaleDateString()}</p></div>}
+                {bill.settled_at && <div><p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Settled At</p><p>{new Date(bill.settled_at).toLocaleDateString()}</p></div>}
+              </div>
+              {bill.bill_file_url && (
+                <div className="flex items-center gap-1.5 text-sm text-accent-mid cursor-pointer hover:underline border-t border-border pt-3">
+                  <FileText size={14} /> {bill.bill_file_url}
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                {bill.status === "pending" && currentUser.role === "dept_head" && (
+                  <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Verify</button>
+                )}
+                {bill.status === "dept-verified" && currentUser.role === "sa" && (
+                  <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Settle</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }

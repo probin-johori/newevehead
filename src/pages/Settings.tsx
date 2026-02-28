@@ -28,102 +28,125 @@ export default function SettingsPage() {
 
   return (
     <>
-      <TopBar title="Settings" />
-      <div className="p-6 space-y-6">
-        <div className="flex gap-1 border-b border-border">
+      <TopBar title="Settings" subtitle="Manage your account." />
+      <div className="flex">
+        {/* Vertical nav */}
+        <div className="w-48 shrink-0 border-r border-border p-4 space-y-1 min-h-[calc(100vh-52px)]">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                tab === t.key ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
               }`}>
               {t.label}
             </button>
           ))}
         </div>
 
-        {tab === "subscription" && (
-          <div className="space-y-6">
-            <div className="rounded-xl bg-gradient-to-r from-primary to-accent-mid p-6 text-primary-foreground">
-              <p className="text-sm font-light opacity-80">Current Plan</p>
-              <p className="text-2xl font-serif mt-1 capitalize">{subscription.plan}</p>
-              <div className="flex items-center gap-2 mt-3">
-                {Array.from({ length: subscription.slots_total }).map((_, i) => (
-                  <div key={i} className={`h-3 w-8 rounded-full ${i < subscription.slots_used ? "bg-white" : "bg-white/30"}`} />
-                ))}
-                <span className="text-sm font-light ml-2">{subscription.slots_used}/{subscription.slots_total} slots used</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              {planDetails.map(p => (
-                <div key={p.plan} className={`rounded-xl border p-5 shadow-sm ${subscription.plan === p.plan ? "border-primary bg-accent-light" : "border-border bg-card"}`}>
-                  <p className="text-lg font-serif">{p.name}</p>
-                  <p className="text-2xl font-serif mt-1">{p.price}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{p.slots}</p>
-                  <div className="mt-4 space-y-1.5">
-                    {p.features.map(f => (
-                      <div key={f} className="flex items-center gap-1.5 text-sm"><Check size={14} className="text-primary" weight="bold" />{f}</div>
-                    ))}
-                    {p.locked.map(f => (
-                      <div key={f} className="flex items-center gap-1.5 text-sm text-muted-foreground"><X size={14} />{f}</div>
-                    ))}
-                  </div>
-                  <button className={`mt-4 w-full rounded-lg px-3 py-2 text-sm font-medium transition-opacity ${
-                    subscription.plan === p.plan ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:opacity-80"
-                  }`}>
-                    {subscription.plan === p.plan ? "Current Plan" : "Upgrade"}
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <h3 className="text-base font-serif mb-3">Event Slot Usage</h3>
-              <table className="w-full text-sm">
-                <thead><tr className="bg-secondary text-left">
-                  <th className="px-4 py-2.5 font-medium">Event</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Slot</th>
-                </tr></thead>
-                <tbody>
-                  {events.map(ev => (
-                    <tr key={ev.id} className="border-t border-border cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/events/${ev.id}`)}>
-                      <td className="px-4 py-2.5">{ev.name}</td>
-                      <td className="px-4 py-2.5"><StatusBadge status={ev.status} /></td>
-                      <td className="px-4 py-2.5"><span className="rounded-full bg-accent-light text-primary px-2.5 py-0.5 text-xs font-medium">Occupied</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="text-[11px] text-muted-foreground mt-3">Completing or archiving an event does not free the slot. Slots reset on billing cycle.</p>
-            </div>
-          </div>
-        )}
-
-        {tab === "profile" && (
-          <div className="max-w-md space-y-4">
-            <div className="flex items-center gap-4">
-              <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="lg" />
+        <div className="flex-1 p-6 max-w-[760px]">
+          {tab === "subscription" && (
+            <div className="space-y-6">
               <div>
-                <p className="font-semibold">{currentUser.name}</p>
-                <p className="text-sm text-muted-foreground">{roleLabels[currentUser.role]}</p>
+                <h2 className="text-base font-semibold mb-1">Subscription & Plans</h2>
+                <p className="text-sm text-muted-foreground">Manage your plan and event slots.</p>
+              </div>
+
+              {/* Current plan */}
+              <div className="rounded-xl border border-border p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Plan</p>
+                    <p className="text-lg font-semibold capitalize">{subscription.plan}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{subscription.slots_used} / {subscription.slots_total} slots used</p>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-accent-mid transition-all" style={{ width: `${(subscription.slots_used / subscription.slots_total) * 100}%` }} />
+                </div>
+              </div>
+
+              {/* Plans */}
+              <div className="grid grid-cols-3 gap-4">
+                {planDetails.map(p => (
+                  <div key={p.plan} className={`rounded-xl border p-5 ${subscription.plan === p.plan ? "border-foreground/30 bg-accent-light" : "border-border"}`}>
+                    <p className="text-base font-semibold">{p.name}</p>
+                    <p className="text-lg font-semibold mt-1">{p.price}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{p.slots}</p>
+                    <div className="mt-4 space-y-1.5">
+                      {p.features.map(f => (
+                        <div key={f} className="flex items-center gap-1.5 text-sm"><Check size={13} weight="bold" className="text-success" />{f}</div>
+                      ))}
+                      {p.locked.map(f => (
+                        <div key={f} className="flex items-center gap-1.5 text-sm text-muted-foreground"><X size={13} />{f}</div>
+                      ))}
+                    </div>
+                    <button className={`mt-4 w-full rounded-full px-3 py-2 text-sm font-medium transition-colors ${
+                      subscription.plan === p.plan ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-muted"
+                    }`}>
+                      {subscription.plan === p.plan ? "Current Plan" : "Upgrade"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Slot Usage */}
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold">Event Slot Usage</h3>
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Slot</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {events.map(ev => (
+                        <tr key={ev.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/events/${ev.id}`)}>
+                          <td className="px-4 py-3 font-medium">{ev.name}</td>
+                          <td className="px-4 py-3"><StatusBadge status={ev.status} /></td>
+                          <td className="px-4 py-3"><span className="rounded-full bg-accent-light text-accent-mid px-2 py-0.5 text-[11px] font-medium">Occupied</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted-foreground">Completing or archiving an event does not free the slot. Slots reset on billing cycle.</p>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">Name</label>
-              <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
+          )}
+
+          {tab === "profile" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-base font-semibold mb-1">My Profile</h2>
+                <p className="text-sm text-muted-foreground">Update your personal information.</p>
+              </div>
+              <div className="max-w-md space-y-4">
+                <div className="flex items-center gap-4">
+                  <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="lg" />
+                  <div>
+                    <p className="font-semibold">{currentUser.name}</p>
+                    <p className="text-sm text-muted-foreground">{roleLabels[currentUser.role]}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Name</label>
+                  <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Email</label>
+                  <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Role</label>
+                  <input value={roleLabels[currentUser.role]} disabled className="mt-1 block w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed" />
+                </div>
+                <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">Save Changes</button>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Role</label>
-              <input value={roleLabels[currentUser.role]} disabled className="mt-1 block w-full rounded-lg border border-input bg-muted px-3 py-2 text-sm text-muted-foreground" />
-            </div>
-            <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Save Changes</button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </>
   );
