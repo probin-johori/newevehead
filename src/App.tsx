@@ -12,9 +12,9 @@ import DashboardPage from "@/pages/Dashboard";
 import EventsPage from "@/pages/Events";
 import EventDetailPage from "@/pages/EventDetail";
 import TasksPage from "@/pages/Tasks";
-import ReimbursementsPage from "@/pages/Reimbursements";
-import BudgetPage from "@/pages/Budget";
+import BillingPage from "@/pages/Billing";
 import DocumentsPage from "@/pages/Documents";
+import TeamsPage from "@/pages/Teams";
 import SettingsPage from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
@@ -41,9 +41,10 @@ function AppRoutes() {
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:id" element={<EventDetailPage />} />
         <Route path="tasks" element={<TasksPage />} />
-        <Route path="reimbursements" element={<ReimbursementsPage />} />
-        <Route path="budget" element={<BudgetPage />} />
+        <Route path="tasks/:id" element={<TasksPage />} />
+        <Route path="billing" element={<BillingPage />} />
         <Route path="documents" element={<DocumentsPage />} />
+        <Route path="teams" element={<TeamsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />

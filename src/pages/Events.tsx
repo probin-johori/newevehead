@@ -5,7 +5,7 @@ import { useMockData, EventStatus } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ProgressBar } from "@/components/ProgressBar";
-import { Plus, MapPin, Calendar } from "lucide-react";
+import { Plus, MapPin, CalendarDots } from "@phosphor-icons/react";
 
 const filters: { label: string; value: EventStatus | "all" }[] = [
   { label: "All", value: "all" },
@@ -48,9 +48,9 @@ export default function EventsPage() {
           <button
             disabled={slotsExhausted}
             title={slotsExhausted ? "All event slots are used. Upgrade to create more events." : ""}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="h-4 w-4" /> New Event
+            <Plus size={16} /> New Event
           </button>
         </div>
 
@@ -67,15 +67,15 @@ export default function EventsPage() {
               <div
                 key={ev.id}
                 onClick={() => navigate(`/events/${ev.id}`)}
-                className="cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-accent-mid/40"
+                className="cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-primary/20"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <StatusBadge status={ev.status} />
                 </div>
                 <h3 className="text-xl font-serif mb-2">{ev.name}</h3>
                 <div className="space-y-1.5 text-sm text-muted-foreground mb-4">
-                  <div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" />{ev.location}</div>
-                  <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{ev.start_date} → {ev.end_date}</div>
+                  <div className="flex items-center gap-1.5"><MapPin size={14} />{ev.location}</div>
+                  <div className="flex items-center gap-1.5"><CalendarDots size={14} />{ev.start_date} → {ev.end_date}</div>
                   {poc && (
                     <div className="flex items-center gap-1.5">
                       <UserAvatar name={poc.name} color={poc.avatar_color} size="sm" />
