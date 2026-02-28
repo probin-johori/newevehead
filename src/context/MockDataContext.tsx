@@ -5,16 +5,18 @@ export type Plan = "free" | "pro" | "business";
 export type EventStatus = "planning" | "active" | "completed" | "archived";
 export type TaskStatus = "not-started" | "in-progress" | "blocked" | "completed";
 export type TaskPriority = "low" | "medium" | "high";
-export type ReimbursementStatus = "pending" | "dept-approved" | "ca-approved" | "rejected";
-export type PayStatus = "not-paid" | "advance-paid" | "paid";
+export type BillStatus = "pending" | "dept-verified" | "settled" | "rejected";
+export type AdvanceStatus = "not-given" | "advance-given" | "settled";
 export type DocFolder = "Contracts" | "Layouts" | "Permits" | "Other";
 
 export interface Profile {
   id: string;
   name: string;
   email: string;
+  phone: string;
   role: Role;
   avatar_color: string;
+  dept_name?: string;
 }
 
 export interface Subscription {
@@ -58,11 +60,13 @@ export interface Task {
   event_id: string;
   dept_id: string;
   title: string;
+  description: string;
   assignee_id: string;
   deadline: string;
   priority: TaskPriority;
   status: TaskStatus;
   created_by: string;
+  created_at: string;
 }
 
 export interface TaskComment {
@@ -73,22 +77,24 @@ export interface TaskComment {
   created_at: string;
 }
 
-export interface Reimbursement {
+export interface Bill {
   id: string;
   event_id: string;
   dept_id: string;
   vendor_name: string;
   description: string;
   amount: number;
+  advance_amount: number;
   bill_file_url: string;
-  status: ReimbursementStatus;
-  pay_status: PayStatus;
+  invoice_number: string;
+  status: BillStatus;
+  advance_status: AdvanceStatus;
   submitted_by: string;
-  dept_approved_by: string | null;
-  ca_approved_by: string | null;
+  dept_verified_by: string | null;
+  settled_by: string | null;
   submitted_at: string;
-  dept_approved_at: string | null;
-  ca_approved_at: string | null;
+  dept_verified_at: string | null;
+  settled_at: string | null;
 }
 
 export interface Document {
@@ -110,16 +116,17 @@ export interface Notification {
   type: string;
   read: boolean;
   created_at: string;
+  link_to?: string;
 }
 
 // --- SEED DATA ---
 const profiles: Profile[] = [
-  { id: "u1", name: "Arjun Mehta", email: "arjun@eventops.io", role: "sa", avatar_color: "#1a3a0f" },
-  { id: "u2", name: "Priya Sharma", email: "priya@eventops.io", role: "org", avatar_color: "#4a8a28" },
-  { id: "u3", name: "Rahul Patel", email: "rahul@eventops.io", role: "dept_head", avatar_color: "#1e40af" },
-  { id: "u4", name: "Sneha Gupta", email: "sneha@eventops.io", role: "dept_head", avatar_color: "#a16207" },
-  { id: "u5", name: "Vikram Singh", email: "vikram@eventops.io", role: "dept_member", avatar_color: "#b91c1c" },
-  { id: "u6", name: "Ananya Das", email: "ananya@eventops.io", role: "dept_member", avatar_color: "#6b21a8" },
+  { id: "u1", name: "Arjun Mehta", email: "arjun@eventops.io", phone: "+91 98765 43210", role: "sa", avatar_color: "#1a3a0f", dept_name: "Administration" },
+  { id: "u2", name: "Priya Sharma", email: "priya@eventops.io", phone: "+91 98765 43211", role: "org", avatar_color: "#4a8a28", dept_name: "Operations" },
+  { id: "u3", name: "Rahul Patel", email: "rahul@eventops.io", phone: "+91 98765 43212", role: "dept_head", avatar_color: "#1e40af", dept_name: "Lighting & Sound" },
+  { id: "u4", name: "Sneha Gupta", email: "sneha@eventops.io", phone: "+91 98765 43213", role: "dept_head", avatar_color: "#a16207", dept_name: "Catering & Logistics" },
+  { id: "u5", name: "Vikram Singh", email: "vikram@eventops.io", phone: "+91 98765 43214", role: "dept_member", avatar_color: "#b91c1c", dept_name: "Lighting" },
+  { id: "u6", name: "Ananya Das", email: "ananya@eventops.io", phone: "+91 98765 43215", role: "dept_member", avatar_color: "#6b21a8", dept_name: "Catering" },
 ];
 
 const subscription: Subscription = {
@@ -154,20 +161,31 @@ const departmentMembers: DepartmentMember[] = [
 ];
 
 const tasks: Task[] = [
-  { id: "t1", event_id: "e1", dept_id: "d1", title: "Install main stage LED panels", assignee_id: "u5", deadline: "2026-03-12", priority: "high", status: "in-progress", created_by: "u3" },
-  { id: "t2", event_id: "e1", dept_id: "d2", title: "Confirm menu with vendor", assignee_id: "u6", deadline: "2026-02-25", priority: "high", status: "not-started", created_by: "u4" },
-  { id: "t3", event_id: "e1", dept_id: "d3", title: "Test sound system", assignee_id: "u5", deadline: "2026-03-14", priority: "medium", status: "not-started", created_by: "u3" },
-  { id: "t4", event_id: "e2", dept_id: "d4", title: "Arrange shuttle buses", assignee_id: "u6", deadline: "2026-04-05", priority: "medium", status: "in-progress", created_by: "u4" },
-  { id: "t5", event_id: "e2", dept_id: "d5", title: "Finalize catering contract", assignee_id: "u5", deadline: "2026-02-20", priority: "high", status: "blocked", created_by: "u4" },
-  { id: "t6", event_id: "e2", dept_id: "d6", title: "Security briefing", assignee_id: "u6", deadline: "2026-04-08", priority: "low", status: "not-started", created_by: "u3" },
-  { id: "t7", event_id: "e1", dept_id: "d1", title: "Order spare bulbs", assignee_id: "u5", deadline: "2026-03-10", priority: "low", status: "completed", created_by: "u3" },
+  { id: "t1", event_id: "e1", dept_id: "d1", title: "Install main stage LED panels", description: "Set up 12 LED panels for the main stage area. Coordinate with venue electrician for power supply.", assignee_id: "u5", deadline: "2026-03-12", priority: "high", status: "in-progress", created_by: "u3", created_at: "2026-02-15T10:00:00Z" },
+  { id: "t2", event_id: "e1", dept_id: "d2", title: "Confirm menu with vendor", description: "Finalize the vegetarian menu options with Spice Kitchen. Get tasting session confirmed.", assignee_id: "u6", deadline: "2026-02-25", priority: "high", status: "not-started", created_by: "u4", created_at: "2026-02-14T09:00:00Z" },
+  { id: "t3", event_id: "e1", dept_id: "d3", title: "Test sound system", description: "Full sound check of JBL system at venue. Test microphones, monitors, and main speakers.", assignee_id: "u5", deadline: "2026-03-14", priority: "medium", status: "not-started", created_by: "u3", created_at: "2026-02-16T11:00:00Z" },
+  { id: "t4", event_id: "e2", dept_id: "d4", title: "Arrange shuttle buses", description: "Book 5 shuttle buses for guest transport between hotel and venue. Route planning required.", assignee_id: "u6", deadline: "2026-04-05", priority: "medium", status: "in-progress", created_by: "u4", created_at: "2026-02-10T10:00:00Z" },
+  { id: "t5", event_id: "e2", dept_id: "d5", title: "Finalize catering contract", description: "Get final contract signed with multi-cuisine catering vendor. Includes dietary options.", assignee_id: "u5", deadline: "2026-02-20", priority: "high", status: "blocked", created_by: "u4", created_at: "2026-02-08T10:00:00Z" },
+  { id: "t6", event_id: "e2", dept_id: "d6", title: "Security briefing", description: "Conduct security briefing for all 40 guards. Share venue map and emergency protocols.", assignee_id: "u6", deadline: "2026-04-08", priority: "low", status: "not-started", created_by: "u3", created_at: "2026-02-12T10:00:00Z" },
+  { id: "t7", event_id: "e1", dept_id: "d1", title: "Order spare bulbs", description: "Order 50 spare LED bulbs as backup. Contact LightPro India for bulk pricing.", assignee_id: "u5", deadline: "2026-03-10", priority: "low", status: "completed", created_by: "u3", created_at: "2026-02-13T10:00:00Z" },
 ];
 
-const reimbursements: Reimbursement[] = [
-  { id: "r1", event_id: "e1", dept_id: "d1", vendor_name: "LightPro India", description: "LED panel rental deposit", amount: 45000, bill_file_url: "", status: "pending", pay_status: "not-paid", submitted_by: "u5", dept_approved_by: null, ca_approved_by: null, submitted_at: "2026-02-20T10:00:00Z", dept_approved_at: null, ca_approved_at: null },
-  { id: "r2", event_id: "e1", dept_id: "d2", vendor_name: "Spice Kitchen", description: "Advance for catering supplies", amount: 80000, bill_file_url: "", status: "dept-approved", pay_status: "not-paid", submitted_by: "u6", dept_approved_by: "u4", ca_approved_by: null, submitted_at: "2026-02-18T09:00:00Z", dept_approved_at: "2026-02-19T14:00:00Z", ca_approved_at: null },
-  { id: "r3", event_id: "e2", dept_id: "d4", vendor_name: "City Transport Co.", description: "Shuttle bus booking", amount: 35000, bill_file_url: "", status: "ca-approved", pay_status: "advance-paid", submitted_by: "u6", dept_approved_by: "u4", ca_approved_by: "u1", submitted_at: "2026-02-15T11:00:00Z", dept_approved_at: "2026-02-16T10:00:00Z", ca_approved_at: "2026-02-17T09:00:00Z" },
-  { id: "r4", event_id: "e4", dept_id: "d9", vendor_name: "Royal Caterers", description: "Final catering payment", amount: 95000, bill_file_url: "", status: "ca-approved", pay_status: "paid", submitted_by: "u6", dept_approved_by: "u4", ca_approved_by: "u1", submitted_at: "2026-01-08T10:00:00Z", dept_approved_at: "2026-01-08T15:00:00Z", ca_approved_at: "2026-01-09T10:00:00Z" },
+const taskComments: TaskComment[] = [
+  { id: "tc1", task_id: "t1", author_id: "u3", body: "LED panels have been shipped. ETA March 10th. Make sure the venue loading dock is accessible.", created_at: "2026-02-18T14:00:00Z" },
+  { id: "tc2", task_id: "t1", author_id: "u5", body: "Confirmed with venue. Loading dock available from 8 AM on March 10th. Will need 4 crew members for unloading.", created_at: "2026-02-19T09:30:00Z" },
+  { id: "tc3", task_id: "t1", author_id: "u1", body: "Great progress. Make sure we have insurance for the panels during transport.", created_at: "2026-02-20T11:00:00Z" },
+  { id: "tc4", task_id: "t5", author_id: "u4", body: "Vendor is asking for 50% advance. Need SA approval on this.", created_at: "2026-02-19T10:00:00Z" },
+  { id: "tc5", task_id: "t5", author_id: "u1", body: "Approved. Process the advance through the billing system.", created_at: "2026-02-19T15:00:00Z" },
+  { id: "tc6", task_id: "t2", author_id: "u4", body: "Tasting session scheduled for Feb 23rd at their kitchen.", created_at: "2026-02-17T10:00:00Z" },
+  { id: "tc7", task_id: "t4", author_id: "u6", body: "Got quotes from 3 bus companies. City Transport Co. is the best option at ₹7000 per bus per day.", created_at: "2026-02-15T14:00:00Z" },
+];
+
+const bills: Bill[] = [
+  { id: "b1", event_id: "e1", dept_id: "d1", vendor_name: "LightPro India", description: "LED panel rental deposit", amount: 45000, advance_amount: 20000, bill_file_url: "invoice_lightpro_001.pdf", invoice_number: "LP-2026-001", status: "pending", advance_status: "advance-given", submitted_by: "u5", dept_verified_by: null, settled_by: null, submitted_at: "2026-02-20T10:00:00Z", dept_verified_at: null, settled_at: null },
+  { id: "b2", event_id: "e1", dept_id: "d2", vendor_name: "Spice Kitchen", description: "Advance for catering supplies – raw materials", amount: 80000, advance_amount: 40000, bill_file_url: "invoice_spicekitchen_045.pdf", invoice_number: "SK-2026-045", status: "dept-verified", advance_status: "advance-given", submitted_by: "u6", dept_verified_by: "u4", settled_by: null, submitted_at: "2026-02-18T09:00:00Z", dept_verified_at: "2026-02-19T14:00:00Z", settled_at: null },
+  { id: "b3", event_id: "e2", dept_id: "d4", vendor_name: "City Transport Co.", description: "Shuttle bus booking – 5 buses for 3 days", amount: 105000, advance_amount: 50000, bill_file_url: "invoice_citytransport_112.pdf", invoice_number: "CT-2026-112", status: "settled", advance_status: "settled", submitted_by: "u6", dept_verified_by: "u4", settled_by: "u1", submitted_at: "2026-02-15T11:00:00Z", dept_verified_at: "2026-02-16T10:00:00Z", settled_at: "2026-02-17T09:00:00Z" },
+  { id: "b4", event_id: "e4", dept_id: "d9", vendor_name: "Royal Caterers", description: "Final catering payment – awards night", amount: 95000, advance_amount: 45000, bill_file_url: "invoice_royal_089.pdf", invoice_number: "RC-2026-089", status: "settled", advance_status: "settled", submitted_by: "u6", dept_verified_by: "u4", settled_by: "u1", submitted_at: "2026-01-08T10:00:00Z", dept_verified_at: "2026-01-08T15:00:00Z", settled_at: "2026-01-09T10:00:00Z" },
+  { id: "b5", event_id: "e2", dept_id: "d5", vendor_name: "Fresh Foods Ltd", description: "Catering supplies – fresh vegetables & fruits", amount: 32000, advance_amount: 15000, bill_file_url: "invoice_freshfoods_023.pdf", invoice_number: "FF-2026-023", status: "pending", advance_status: "advance-given", submitted_by: "u5", dept_verified_by: null, settled_by: null, submitted_at: "2026-02-22T09:00:00Z", dept_verified_at: null, settled_at: null },
 ];
 
 const documents: Document[] = [
@@ -180,11 +198,11 @@ const documents: Document[] = [
 ];
 
 const notifications: Notification[] = [
-  { id: "n1", user_id: "u1", body: "Reimbursement submitted by Vikram for LightPro India (₹45,000)", type: "reimbursement_submitted", read: false, created_at: "2026-02-20T10:05:00Z" },
-  { id: "n2", user_id: "u1", body: "Spice Kitchen reimbursement approved by Dept Head Sneha", type: "reimbursement_dept_approved", read: false, created_at: "2026-02-19T14:05:00Z" },
-  { id: "n3", user_id: "u3", body: "Task 'Finalize catering contract' is overdue", type: "task_overdue", read: false, created_at: "2026-02-21T08:00:00Z" },
-  { id: "n4", user_id: "u5", body: "You've been assigned: Install main stage LED panels", type: "task_assigned", read: true, created_at: "2026-02-18T10:00:00Z" },
-  { id: "n5", user_id: "u6", body: "City Transport Co. reimbursement has been CA approved", type: "reimbursement_ca_approved", read: true, created_at: "2026-02-17T09:05:00Z" },
+  { id: "n1", user_id: "u1", body: "New bill submitted by Vikram for LightPro India (₹45,000)", type: "bill_submitted", read: false, created_at: "2026-02-20T10:05:00Z", link_to: "/billing" },
+  { id: "n2", user_id: "u1", body: "Spice Kitchen bill verified by Dept Head Sneha", type: "bill_verified", read: false, created_at: "2026-02-19T14:05:00Z", link_to: "/billing" },
+  { id: "n3", user_id: "u3", body: "Task 'Finalize catering contract' is overdue", type: "task_overdue", read: false, created_at: "2026-02-21T08:00:00Z", link_to: "/tasks/t5" },
+  { id: "n4", user_id: "u5", body: "You've been assigned: Install main stage LED panels", type: "task_assigned", read: true, created_at: "2026-02-18T10:00:00Z", link_to: "/tasks/t1" },
+  { id: "n5", user_id: "u6", body: "City Transport Co. bill has been settled by Finance", type: "bill_settled", read: true, created_at: "2026-02-17T09:05:00Z", link_to: "/billing" },
 ];
 
 interface MockDataContextType {
@@ -200,12 +218,14 @@ interface MockDataContextType {
   departments: Department[];
   departmentMembers: DepartmentMember[];
   tasks: Task[];
-  reimbursements: Reimbursement[];
+  taskComments: TaskComment[];
+  bills: Bill[];
   documents: Document[];
   notifications: Notification[];
   setNotifications: (n: Notification[]) => void;
   setTasks: (t: Task[]) => void;
-  setReimbursements: (r: Reimbursement[]) => void;
+  setBills: (b: Bill[]) => void;
+  setTaskComments: (c: TaskComment[]) => void;
   login: (email: string, password: string) => boolean;
   signup: (name: string, email: string, password: string) => boolean;
   logout: () => void;
@@ -216,7 +236,8 @@ interface MockDataContextType {
   getDeptsByEvent: (eventId: string) => Department[];
   getTasksByEvent: (eventId: string) => Task[];
   getTasksByDept: (deptId: string) => Task[];
-  getReimbursementsByEvent: (eventId: string) => Reimbursement[];
+  getCommentsByTask: (taskId: string) => TaskComment[];
+  getBillsByEvent: (eventId: string) => Bill[];
   getDocsByEvent: (eventId: string) => Document[];
   getUserNotifications: () => Notification[];
   isFreePlan: boolean;
@@ -230,7 +251,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   const [hasSelectedRole, setHasSelectedRole] = useState(true);
   const [notifs, setNotifications] = useState(notifications);
   const [taskList, setTasks] = useState(tasks);
-  const [reimbList, setReimbursements] = useState(reimbursements);
+  const [commentList, setTaskComments] = useState(taskComments);
+  const [billList, setBills] = useState(bills);
 
   const login = useCallback((email: string, _password: string) => {
     const found = profiles.find(p => p.email === email);
@@ -240,7 +262,6 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       setHasSelectedRole(true);
       return true;
     }
-    // Default to SA for demo
     setCurrentUser(profiles[0]);
     setIsAuthenticated(true);
     setHasSelectedRole(true);
@@ -248,17 +269,14 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signup = useCallback((name: string, email: string, _password: string) => {
-    const newUser: Profile = { id: "u_new", name, email, role: "dept_member", avatar_color: "#6b21a8" };
+    const newUser: Profile = { id: "u_new", name, email, phone: "", role: "dept_member", avatar_color: "#6b21a8" };
     setCurrentUser(newUser);
     setIsAuthenticated(true);
     setHasSelectedRole(false);
     return true;
   }, []);
 
-  const logout = useCallback(() => {
-    setIsAuthenticated(false);
-  }, []);
-
+  const logout = useCallback(() => { setIsAuthenticated(false); }, []);
   const selectRole = useCallback((role: Role) => {
     setCurrentUser(prev => ({ ...prev, role }));
     setHasSelectedRole(true);
@@ -270,7 +288,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   const getDeptsByEvent = (eventId: string) => departments.filter(d => d.event_id === eventId);
   const getTasksByEvent = (eventId: string) => taskList.filter(t => t.event_id === eventId);
   const getTasksByDept = (deptId: string) => taskList.filter(t => t.dept_id === deptId);
-  const getReimbursementsByEvent = (eventId: string) => reimbList.filter(r => r.event_id === eventId);
+  const getCommentsByTask = (taskId: string) => commentList.filter(c => c.task_id === taskId);
+  const getBillsByEvent = (eventId: string) => billList.filter(b => b.event_id === eventId);
   const getDocsByEvent = (eventId: string) => documents.filter(d => d.event_id === eventId);
   const getUserNotifications = () => notifs.filter(n => n.user_id === currentUser.id);
 
@@ -279,11 +298,11 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated,
       hasSelectedRole, setHasSelectedRole,
       profiles, subscription, events, departments, departmentMembers,
-      tasks: taskList, reimbursements: reimbList, documents, notifications: notifs,
-      setNotifications, setTasks, setReimbursements,
+      tasks: taskList, taskComments: commentList, bills: billList, documents, notifications: notifs,
+      setNotifications, setTasks, setBills, setTaskComments,
       login, signup, logout, selectRole,
       getProfile, getEvent, getDepartment, getDeptsByEvent,
-      getTasksByEvent, getTasksByDept, getReimbursementsByEvent,
+      getTasksByEvent, getTasksByDept, getCommentsByTask, getBillsByEvent,
       getDocsByEvent, getUserNotifications,
       isFreePlan: subscription.plan === "free",
     }}>
