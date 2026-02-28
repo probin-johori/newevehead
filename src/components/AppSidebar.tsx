@@ -25,51 +25,45 @@ export function AppSidebar() {
   const location = useLocation();
 
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-60 flex-col bg-primary text-primary-foreground">
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-56 flex-col bg-[hsl(var(--sidebar-background))] text-[hsl(var(--sidebar-foreground))]">
       <div className="flex items-center gap-2.5 px-5 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20 font-serif text-lg font-bold">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/20 text-sm font-semibold">
           E
         </div>
-        <span className="text-lg font-light tracking-tight">EventOps</span>
+        <span className="text-[15px] font-medium tracking-tight">EventOps</span>
       </div>
 
-      <div className="px-3 py-1">
-        <p className="px-2 pb-2 text-[10px] font-medium uppercase tracking-widest text-white/40">
-          Navigation
-        </p>
-      </div>
-
-      <nav className="flex-1 space-y-0.5 px-3">
+      <nav className="flex-1 space-y-0.5 px-3 mt-2">
         {navItems.map(item => {
           const isActive = location.pathname.startsWith(item.to);
           return (
             <NavLink
               key={item.to}
               to={item.to}
-              className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-[13px] font-light tracking-wide transition-colors ${
+              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-[13px] font-normal transition-colors ${
                 isActive
-                  ? "bg-white/15 text-white font-normal"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
+                  ? "bg-white/12 text-white"
+                  : "text-white/50 hover:bg-white/8 hover:text-white/80"
               }`}
             >
-              <item.icon size={18} weight={isActive ? "fill" : "regular"} />
+              <item.icon size={17} weight={isActive ? "fill" : "regular"} />
               {item.label}
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="mt-auto border-t border-white/10 p-4 space-y-3">
-        <div className="flex items-center gap-2 rounded-md bg-white/10 px-3 py-1.5">
-          <span className="text-xs font-light capitalize">{subscription.plan}</span>
-          <span className="text-[10px] text-white/40">·</span>
-          <span className="text-xs text-white/50 font-light">{subscription.slots_used}/{subscription.slots_total} slots</span>
+      <div className="mt-auto border-t border-white/8 p-4 space-y-3">
+        <div className="flex items-center gap-2 rounded-md bg-white/8 px-3 py-1.5">
+          <span className="text-xs font-normal capitalize">{subscription.plan}</span>
+          <span className="text-[10px] text-white/30">·</span>
+          <span className="text-xs text-white/40">{subscription.slots_used}/{subscription.slots_total} slots</span>
         </div>
         <NavLink to="/settings" className="flex items-center gap-2.5 rounded-md px-1 py-1 hover:bg-white/5 transition-colors">
           <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-light">{currentUser.name}</p>
-            <p className="text-[10px] text-white/50 font-light">{roleLabels[currentUser.role]}</p>
+            <p className="truncate text-[13px] font-normal">{currentUser.name}</p>
+            <p className="text-[10px] text-white/40">{roleLabels[currentUser.role]}</p>
           </div>
         </NavLink>
       </div>
