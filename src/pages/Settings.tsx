@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TopBar } from "@/components/TopBar";
-import { useMockData } from "@/context/MockDataContext";
-import { UserAvatar } from "@/components/UserAvatar";
+import { useMockData, formatINR } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Check, X } from "@phosphor-icons/react";
 
 const planDetails = [
@@ -27,11 +26,12 @@ export default function SettingsPage() {
   ];
 
   return (
-    <>
-      <TopBar title="Settings" subtitle="Manage your account." />
-      <div className="flex">
-        {/* Vertical nav */}
-        <div className="w-48 shrink-0 border-r border-border p-4 space-y-1 min-h-[calc(100vh-52px)]">
+    <div className="p-6 max-w-[960px]">
+      <h1 className="text-2xl font-semibold mb-1">Settings</h1>
+      <p className="text-sm text-muted-foreground mb-5">Manage your account</p>
+
+      <div className="flex gap-8">
+        <div className="w-44 shrink-0 space-y-1">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
@@ -42,15 +42,9 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <div className="flex-1 p-6 max-w-[760px]">
+        <div className="flex-1">
           {tab === "subscription" && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-base font-semibold mb-1">Subscription & Plans</h2>
-                <p className="text-sm text-muted-foreground">Manage your plan and event slots.</p>
-              </div>
-
-              {/* Current plan */}
               <div className="rounded-xl border border-border p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -60,20 +54,19 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">{subscription.slots_used} / {subscription.slots_total} slots used</p>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-accent-mid transition-all" style={{ width: `${(subscription.slots_used / subscription.slots_total) * 100}%` }} />
+                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(subscription.slots_used / subscription.slots_total) * 100}%` }} />
                 </div>
               </div>
 
-              {/* Plans */}
               <div className="grid grid-cols-3 gap-4">
                 {planDetails.map(p => (
-                  <div key={p.plan} className={`rounded-xl border p-5 ${subscription.plan === p.plan ? "border-foreground/30 bg-accent-light" : "border-border"}`}>
+                  <div key={p.plan} className={`rounded-xl border p-5 ${subscription.plan === p.plan ? "border-foreground/30 bg-blue-50/30" : "border-border"}`}>
                     <p className="text-base font-semibold">{p.name}</p>
                     <p className="text-lg font-semibold mt-1">{p.price}</p>
                     <p className="text-xs text-muted-foreground mt-1">{p.slots}</p>
                     <div className="mt-4 space-y-1.5">
                       {p.features.map(f => (
-                        <div key={f} className="flex items-center gap-1.5 text-sm"><Check size={13} weight="bold" className="text-success" />{f}</div>
+                        <div key={f} className="flex items-center gap-1.5 text-sm"><Check size={13} weight="bold" className="text-emerald-500" />{f}</div>
                       ))}
                       {p.locked.map(f => (
                         <div key={f} className="flex items-center gap-1.5 text-sm text-muted-foreground"><X size={13} />{f}</div>
@@ -88,7 +81,6 @@ export default function SettingsPage() {
                 ))}
               </div>
 
-              {/* Slot Usage */}
               <div className="space-y-3">
                 <h3 className="text-base font-semibold">Event Slot Usage</h3>
                 <div className="rounded-xl border border-border overflow-hidden">
@@ -102,10 +94,10 @@ export default function SettingsPage() {
                     </thead>
                     <tbody>
                       {events.map(ev => (
-                        <tr key={ev.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/50" onClick={() => navigate(`/events/${ev.id}`)}>
+                        <tr key={ev.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30" onClick={() => navigate(`/events/${ev.id}`)}>
                           <td className="px-4 py-3 font-medium">{ev.name}</td>
                           <td className="px-4 py-3"><StatusBadge status={ev.status} /></td>
-                          <td className="px-4 py-3"><span className="rounded-full bg-accent-light text-accent-mid px-2 py-0.5 text-[11px] font-medium">Occupied</span></td>
+                          <td className="px-4 py-3"><span className="rounded-full bg-blue-50 text-blue-600 px-2 py-0.5 text-[11px] font-medium">Occupied</span></td>
                         </tr>
                       ))}
                     </tbody>
@@ -118,10 +110,6 @@ export default function SettingsPage() {
 
           {tab === "profile" && (
             <div className="space-y-6">
-              <div>
-                <h2 className="text-base font-semibold mb-1">My Profile</h2>
-                <p className="text-sm text-muted-foreground">Update your personal information.</p>
-              </div>
               <div className="max-w-md space-y-4">
                 <div className="flex items-center gap-4">
                   <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="lg" />
@@ -132,11 +120,11 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Name</label>
-                  <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" />
+                  <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Email</label>
-                  <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" />
+                  <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Role</label>
@@ -148,6 +136,6 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

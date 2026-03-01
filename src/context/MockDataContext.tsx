@@ -4,8 +4,8 @@ export type Role = "sa" | "org" | "dept_head" | "dept_member";
 export type Plan = "free" | "pro" | "business";
 export type EventStatus = "planning" | "active" | "completed" | "archived";
 export type TaskStatus = "not-started" | "in-progress" | "blocked" | "completed";
-export type TaskPriority = "low" | "medium" | "high";
-export type BillStatus = "pending" | "dept-verified" | "settled" | "rejected";
+export type TaskPriority = "low" | "normal" | "high" | "urgent";
+export type BillStatus = "pending" | "dept-verified" | "ca-approved" | "settled" | "rejected";
 export type AdvanceStatus = "not-given" | "advance-given" | "settled";
 export type DocFolder = "Contracts" | "Layouts" | "Permits" | "Other";
 
@@ -47,12 +47,14 @@ export interface Department {
   name: string;
   head_id: string;
   allocated_budget: number;
+  spent: number;
   notes: string;
 }
 
-export interface DepartmentMember {
-  dept_id: string;
-  user_id: string;
+export interface SubTask {
+  id: string;
+  title: string;
+  completed: boolean;
 }
 
 export interface Task {
@@ -65,6 +67,7 @@ export interface Task {
   deadline: string;
   priority: TaskPriority;
   status: TaskStatus;
+  subtasks: SubTask[];
   created_by: string;
   created_at: string;
 }
@@ -91,9 +94,11 @@ export interface Bill {
   advance_status: AdvanceStatus;
   submitted_by: string;
   dept_verified_by: string | null;
+  ca_approved_by: string | null;
   settled_by: string | null;
   submitted_at: string;
   dept_verified_at: string | null;
+  ca_approved_at: string | null;
   settled_at: string | null;
 }
 
@@ -109,6 +114,15 @@ export interface Document {
   uploaded_at: string;
 }
 
+export interface Activity {
+  id: string;
+  event_id: string;
+  user_id: string;
+  description: string;
+  link_text?: string;
+  created_at: string;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
@@ -119,90 +133,207 @@ export interface Notification {
   link_to?: string;
 }
 
+export interface DeptHealth {
+  name: string;
+  tasksDone: number;
+  tasksTotal: number;
+  budgetPct: number;
+}
+
+export const formatINR = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+
+export const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  if (d.getTime() === today.getTime()) return "Today";
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.getTime() === yesterday.getTime()) return "Yesterday";
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+export const formatTimeAgo = (dateStr: string) => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (hours < 1) return "Just now";
+  if (hours < 24) return `${hours} hours ago`;
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
+};
+
 // --- SEED DATA ---
 const profiles: Profile[] = [
-  { id: "u1", name: "Arjun Mehta", email: "arjun@eventops.io", phone: "+91 98765 43210", role: "sa", avatar_color: "#1a3a0f", dept_name: "Administration" },
-  { id: "u2", name: "Priya Sharma", email: "priya@eventops.io", phone: "+91 98765 43211", role: "org", avatar_color: "#4a8a28", dept_name: "Operations" },
-  { id: "u3", name: "Rahul Patel", email: "rahul@eventops.io", phone: "+91 98765 43212", role: "dept_head", avatar_color: "#1e40af", dept_name: "Lighting & Sound" },
-  { id: "u4", name: "Sneha Gupta", email: "sneha@eventops.io", phone: "+91 98765 43213", role: "dept_head", avatar_color: "#a16207", dept_name: "Catering & Logistics" },
-  { id: "u5", name: "Vikram Singh", email: "vikram@eventops.io", phone: "+91 98765 43214", role: "dept_member", avatar_color: "#b91c1c", dept_name: "Lighting" },
-  { id: "u6", name: "Ananya Das", email: "ananya@eventops.io", phone: "+91 98765 43215", role: "dept_member", avatar_color: "#6b21a8", dept_name: "Catering" },
+  { id: "u1", name: "Aarav Singh", email: "aarav@zerohour.io", phone: "+91 98765 43210", role: "dept_head", avatar_color: "#7c3aed", dept_name: "Stage & AV" },
+  { id: "u2", name: "Kavya Nair", email: "kavya@zerohour.io", phone: "+91 98765 43211", role: "dept_head", avatar_color: "#dc2626", dept_name: "Lighting" },
+  { id: "u3", name: "Rohan Das", email: "rohan@zerohour.io", phone: "+91 98765 43212", role: "dept_head", avatar_color: "#16a34a", dept_name: "Catering" },
+  { id: "u4", name: "Sana Kapoor", email: "sana@zerohour.io", phone: "+91 98765 43213", role: "dept_member", avatar_color: "#d97706", dept_name: "Catering" },
+  { id: "u5", name: "Priya Sharma", email: "priya@zerohour.io", phone: "+91 98765 43214", role: "org", avatar_color: "#2563eb", dept_name: "Operations" },
+  { id: "u6", name: "Arjun Mehta", email: "arjun@zerohour.io", phone: "+91 98765 43215", role: "sa", avatar_color: "#4f46e5", dept_name: "Administration" },
+  { id: "u7", name: "Sumit Patel", email: "sumit@zerohour.io", phone: "+91 98765 43216", role: "sa", avatar_color: "#4338ca", dept_name: "Administration" },
 ];
 
 const subscription: Subscription = {
-  id: "sub1", org_id: "u1", plan: "pro", slots_total: 4, slots_used: 3,
+  id: "sub1", org_id: "u7", plan: "pro", slots_total: 4, slots_used: 4,
 };
 
 const events: Event[] = [
-  { id: "e1", name: "Diwali Grand Gala", location: "Mumbai Convention Center", start_date: "2026-03-15", end_date: "2026-03-17", setup_date: "2026-03-13", teardown_date: "2026-03-18", estimated_budget: 500000, status: "active", poc_id: "u2", created_by: "u1" },
-  { id: "e2", name: "Tech Summit 2026", location: "Bangalore Tech Park", start_date: "2026-04-10", end_date: "2026-04-12", setup_date: "2026-04-08", teardown_date: "2026-04-13", estimated_budget: 800000, status: "active", poc_id: "u2", created_by: "u1" },
-  { id: "e3", name: "Spring Music Festival", location: "Delhi Open Grounds", start_date: "2026-05-01", end_date: "2026-05-03", setup_date: "2026-04-29", teardown_date: "2026-05-04", estimated_budget: 300000, status: "planning", poc_id: "u2", created_by: "u1" },
-  { id: "e4", name: "Annual Awards Night", location: "Hyderabad Grand Hall", start_date: "2026-01-10", end_date: "2026-01-10", setup_date: "2026-01-09", teardown_date: "2026-01-11", estimated_budget: 250000, status: "completed", poc_id: "u2", created_by: "u1" },
+  { id: "e1", name: "Diwali Grand Gala", location: "NSCI, Mumbai", start_date: "2026-03-15", end_date: "2026-03-17", setup_date: "2026-03-13", teardown_date: "2026-03-18", estimated_budget: 2500000, status: "active", poc_id: "u5", created_by: "u7" },
+  { id: "e2", name: "Mumbai Tech Summit 2025", location: "Jio Convention Centre", start_date: "2026-04-10", end_date: "2026-04-12", setup_date: "2026-04-08", teardown_date: "2026-04-13", estimated_budget: 1800000, status: "planning", poc_id: "u5", created_by: "u7" },
+  { id: "e3", name: "Bengaluru Startup Expo", location: "Bangalore International Exhibition Centre", start_date: "2026-05-01", end_date: "2026-05-03", setup_date: "2026-04-29", teardown_date: "2026-05-04", estimated_budget: 1200000, status: "planning", poc_id: "u5", created_by: "u7" },
+  { id: "e4", name: "Delhi Fashion Week", location: "Pragati Maidan, New Delhi", start_date: "2026-06-05", end_date: "2026-06-08", setup_date: "2026-06-03", teardown_date: "2026-06-09", estimated_budget: 3000000, status: "planning", poc_id: "u5", created_by: "u7" },
 ];
 
 const departments: Department[] = [
-  { id: "d1", event_id: "e1", name: "Lighting", head_id: "u3", allocated_budget: 120000, notes: "LED setup for main stage" },
-  { id: "d2", event_id: "e1", name: "Catering", head_id: "u4", allocated_budget: 200000, notes: "500 pax vegetarian menu" },
-  { id: "d3", event_id: "e1", name: "Stage & Sound", head_id: "u3", allocated_budget: 150000, notes: "JBL sound system rental" },
-  { id: "d4", event_id: "e2", name: "Logistics", head_id: "u4", allocated_budget: 180000, notes: "Transport & venue prep" },
-  { id: "d5", event_id: "e2", name: "Catering", head_id: "u4", allocated_budget: 250000, notes: "800 pax multi-cuisine" },
-  { id: "d6", event_id: "e2", name: "Security", head_id: "u3", allocated_budget: 100000, notes: "40 guards, 3 shifts" },
-  { id: "d7", event_id: "e3", name: "Stage & Sound", head_id: "u3", allocated_budget: 100000, notes: "" },
-  { id: "d8", event_id: "e3", name: "Lighting", head_id: "u3", allocated_budget: 80000, notes: "" },
-  { id: "d9", event_id: "e4", name: "Catering", head_id: "u4", allocated_budget: 100000, notes: "" },
-  { id: "d10", event_id: "e4", name: "Stage & Sound", head_id: "u3", allocated_budget: 80000, notes: "" },
-  { id: "d11", event_id: "e4", name: "Logistics", head_id: "u4", allocated_budget: 70000, notes: "" },
-];
-
-const departmentMembers: DepartmentMember[] = [
-  { dept_id: "d1", user_id: "u5" }, { dept_id: "d2", user_id: "u6" },
-  { dept_id: "d3", user_id: "u5" }, { dept_id: "d4", user_id: "u6" },
-  { dept_id: "d5", user_id: "u5" }, { dept_id: "d6", user_id: "u6" },
+  { id: "d1", event_id: "e1", name: "Stage & AV", head_id: "u1", allocated_budget: 300000, spent: 252000, notes: "Main stage setup & sound" },
+  { id: "d2", event_id: "e1", name: "Lighting", head_id: "u2", allocated_budget: 200000, spent: 214000, notes: "LED panels & ambient lighting" },
+  { id: "d3", event_id: "e1", name: "Catering", head_id: "u3", allocated_budget: 600000, spent: 120000, notes: "500 pax multi-cuisine" },
+  { id: "d4", event_id: "e1", name: "Logistics", head_id: "u4", allocated_budget: 350000, spent: 77000, notes: "Transport & venue prep" },
+  { id: "d5", event_id: "e1", name: "Security", head_id: "u5", allocated_budget: 200000, spent: 0, notes: "40 guards, 3 shifts" },
+  { id: "d6", event_id: "e1", name: "Hospitality", head_id: "u5", allocated_budget: 300000, spent: 81000, notes: "Guest relations & VIP" },
+  { id: "d7", event_id: "e1", name: "IT & Tech Support", head_id: "u6", allocated_budget: 250000, spent: 50000, notes: "WiFi, streaming, AV tech" },
+  { id: "d8", event_id: "e1", name: "Marketing & Branding", head_id: "u6", allocated_budget: 300000, spent: 210000, notes: "Social media, signage, branding" },
 ];
 
 const tasks: Task[] = [
-  { id: "t1", event_id: "e1", dept_id: "d1", title: "Install main stage LED panels", description: "Set up 12 LED panels for the main stage area. Coordinate with venue electrician for power supply.", assignee_id: "u5", deadline: "2026-03-12", priority: "high", status: "in-progress", created_by: "u3", created_at: "2026-02-15T10:00:00Z" },
-  { id: "t2", event_id: "e1", dept_id: "d2", title: "Confirm menu with vendor", description: "Finalize the vegetarian menu options with Spice Kitchen. Get tasting session confirmed.", assignee_id: "u6", deadline: "2026-02-25", priority: "high", status: "not-started", created_by: "u4", created_at: "2026-02-14T09:00:00Z" },
-  { id: "t3", event_id: "e1", dept_id: "d3", title: "Test sound system", description: "Full sound check of JBL system at venue. Test microphones, monitors, and main speakers.", assignee_id: "u5", deadline: "2026-03-14", priority: "medium", status: "not-started", created_by: "u3", created_at: "2026-02-16T11:00:00Z" },
-  { id: "t4", event_id: "e2", dept_id: "d4", title: "Arrange shuttle buses", description: "Book 5 shuttle buses for guest transport between hotel and venue. Route planning required.", assignee_id: "u6", deadline: "2026-04-05", priority: "medium", status: "in-progress", created_by: "u4", created_at: "2026-02-10T10:00:00Z" },
-  { id: "t5", event_id: "e2", dept_id: "d5", title: "Finalize catering contract", description: "Get final contract signed with multi-cuisine catering vendor. Includes dietary options.", assignee_id: "u5", deadline: "2026-02-20", priority: "high", status: "blocked", created_by: "u4", created_at: "2026-02-08T10:00:00Z" },
-  { id: "t6", event_id: "e2", dept_id: "d6", title: "Security briefing", description: "Conduct security briefing for all 40 guards. Share venue map and emergency protocols.", assignee_id: "u6", deadline: "2026-04-08", priority: "low", status: "not-started", created_by: "u3", created_at: "2026-02-12T10:00:00Z" },
-  { id: "t7", event_id: "e1", dept_id: "d1", title: "Order spare bulbs", description: "Order 50 spare LED bulbs as backup. Contact LightPro India for bulk pricing.", assignee_id: "u5", deadline: "2026-03-10", priority: "low", status: "completed", created_by: "u3", created_at: "2026-02-13T10:00:00Z" },
+  {
+    id: "t1", event_id: "e1", dept_id: "d1", title: "Install front truss rig", description: "Set up the front truss rigging system for main stage lighting and speaker mounts.",
+    assignee_id: "u1", deadline: "2026-03-01", priority: "high", status: "in-progress", created_by: "u7", created_at: "2026-02-15T10:00:00Z",
+    subtasks: [
+      { id: "st1", title: "Source truss hardware from vendor", completed: true },
+      { id: "st2", title: "Transport truss to venue", completed: true },
+      { id: "st3", title: "Assemble ground support structure", completed: false },
+      { id: "st4", title: "Hoist and secure to ceiling mounts", completed: true },
+      { id: "st5", title: "Safety inspection sign-off", completed: false },
+    ],
+  },
+  {
+    id: "t2", event_id: "e1", dept_id: "d1", title: "Main stage sound check", description: "Full sound check of all speaker arrays, monitors, and microphone lines.",
+    assignee_id: "u2", deadline: "2026-03-01", priority: "urgent", status: "not-started", created_by: "u7", created_at: "2026-02-16T10:00:00Z",
+    subtasks: [
+      { id: "st6", title: "Test main PA system", completed: false },
+      { id: "st7", title: "Test monitor wedges on stage", completed: false },
+      { id: "st8", title: "Test wireless microphones", completed: false },
+      { id: "st9", title: "Test IEM system", completed: false },
+      { id: "st10", title: "Final mix check with artist", completed: false },
+    ],
+  },
+  {
+    id: "t3", event_id: "e1", dept_id: "d3", title: "Finalise menu with Chef Kumar", description: "Confirm final menu selections, dietary options, and presentation style.",
+    assignee_id: "u3", deadline: "2026-11-05", priority: "normal", status: "in-progress", created_by: "u7", created_at: "2026-02-14T10:00:00Z",
+    subtasks: [
+      { id: "st11", title: "Review menu options", completed: true },
+      { id: "st12", title: "Tasting session", completed: true },
+      { id: "st13", title: "Finalize dietary accommodations", completed: false },
+      { id: "st14", title: "Confirm presentation style", completed: false },
+      { id: "st15", title: "Sign contract with Chef Kumar", completed: false },
+    ],
+  },
+  {
+    id: "t4", event_id: "e1", dept_id: "d3", title: "Crockery rental arrangement", description: "Arrange rental of crockery, cutlery, and glassware for 500 guests.",
+    assignee_id: "u4", deadline: "2025-09-25", priority: "high", status: "blocked", created_by: "u7", created_at: "2026-02-10T10:00:00Z",
+    subtasks: [
+      { id: "st16", title: "Get quotes from 3 vendors", completed: true },
+      { id: "st17", title: "Select vendor and negotiate", completed: true },
+      { id: "st18", title: "Confirm delivery date", completed: false },
+      { id: "st19", title: "Arrange storage at venue", completed: false },
+      { id: "st20", title: "Quality check on delivery", completed: false },
+    ],
+  },
+  {
+    id: "t5", event_id: "e1", dept_id: "d6", title: "Guest registration setup", description: "Set up registration desks, badge printing, and guest check-in flow.",
+    assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "not-started", created_by: "u7", created_at: "2026-02-12T10:00:00Z",
+    subtasks: [
+      { id: "st21", title: "Design registration badges", completed: false },
+      { id: "st22", title: "Set up check-in tablets", completed: false },
+      { id: "st23", title: "Brief registration volunteers", completed: false },
+      { id: "st24", title: "Test badge printing", completed: false },
+      { id: "st25", title: "Prepare guest list spreadsheet", completed: false },
+    ],
+  },
+  {
+    id: "t6", event_id: "e1", dept_id: "d6", title: "VIP lounge preparation", description: "Prepare the VIP lounge area with refreshments, seating, and branding.",
+    assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "not-started", created_by: "u7", created_at: "2026-02-13T10:00:00Z",
+    subtasks: [
+      { id: "st26", title: "Arrange premium seating", completed: false },
+      { id: "st27", title: "Order VIP refreshments", completed: false },
+      { id: "st28", title: "Set up VIP signage", completed: false },
+      { id: "st29", title: "Coordinate VIP hostesses", completed: false },
+    ],
+  },
 ];
 
 const taskComments: TaskComment[] = [
-  { id: "tc1", task_id: "t1", author_id: "u3", body: "LED panels have been shipped. ETA March 10th. Make sure the venue loading dock is accessible.", created_at: "2026-02-18T14:00:00Z" },
-  { id: "tc2", task_id: "t1", author_id: "u5", body: "Confirmed with venue. Loading dock available from 8 AM on March 10th. Will need 4 crew members for unloading.", created_at: "2026-02-19T09:30:00Z" },
-  { id: "tc3", task_id: "t1", author_id: "u1", body: "Great progress. Make sure we have insurance for the panels during transport.", created_at: "2026-02-20T11:00:00Z" },
-  { id: "tc4", task_id: "t5", author_id: "u4", body: "Vendor is asking for 50% advance. Need SA approval on this.", created_at: "2026-02-19T10:00:00Z" },
-  { id: "tc5", task_id: "t5", author_id: "u1", body: "Approved. Process the advance through the billing system.", created_at: "2026-02-19T15:00:00Z" },
-  { id: "tc6", task_id: "t2", author_id: "u4", body: "Tasting session scheduled for Feb 23rd at their kitchen.", created_at: "2026-02-17T10:00:00Z" },
-  { id: "tc7", task_id: "t4", author_id: "u6", body: "Got quotes from 3 bus companies. City Transport Co. is the best option at ₹7000 per bus per day.", created_at: "2026-02-15T14:00:00Z" },
+  { id: "tc1", task_id: "t1", author_id: "u1", body: "Truss hardware has been sourced from Stagecraft India. Delivery expected by March 10th.", created_at: "2026-02-18T14:00:00Z" },
+  { id: "tc2", task_id: "t1", author_id: "u7", body: "Great. Make sure we have insurance cover for the transport.", created_at: "2026-02-19T09:30:00Z" },
+  { id: "tc3", task_id: "t4", author_id: "u4", body: "Vendor is asking for advance payment. Waiting on budget approval.", created_at: "2026-02-19T10:00:00Z" },
+  { id: "tc4", task_id: "t4", author_id: "u6", body: "Budget approved. Please proceed with the advance.", created_at: "2026-02-19T15:00:00Z" },
 ];
 
 const bills: Bill[] = [
-  { id: "b1", event_id: "e1", dept_id: "d1", vendor_name: "LightPro India", description: "LED panel rental deposit", amount: 45000, advance_amount: 20000, bill_file_url: "invoice_lightpro_001.pdf", invoice_number: "LP-2026-001", status: "pending", advance_status: "advance-given", submitted_by: "u5", dept_verified_by: null, settled_by: null, submitted_at: "2026-02-20T10:00:00Z", dept_verified_at: null, settled_at: null },
-  { id: "b2", event_id: "e1", dept_id: "d2", vendor_name: "Spice Kitchen", description: "Advance for catering supplies – raw materials", amount: 80000, advance_amount: 40000, bill_file_url: "invoice_spicekitchen_045.pdf", invoice_number: "SK-2026-045", status: "dept-verified", advance_status: "advance-given", submitted_by: "u6", dept_verified_by: "u4", settled_by: null, submitted_at: "2026-02-18T09:00:00Z", dept_verified_at: "2026-02-19T14:00:00Z", settled_at: null },
-  { id: "b3", event_id: "e2", dept_id: "d4", vendor_name: "City Transport Co.", description: "Shuttle bus booking – 5 buses for 3 days", amount: 105000, advance_amount: 50000, bill_file_url: "invoice_citytransport_112.pdf", invoice_number: "CT-2026-112", status: "settled", advance_status: "settled", submitted_by: "u6", dept_verified_by: "u4", settled_by: "u1", submitted_at: "2026-02-15T11:00:00Z", dept_verified_at: "2026-02-16T10:00:00Z", settled_at: "2026-02-17T09:00:00Z" },
-  { id: "b4", event_id: "e4", dept_id: "d9", vendor_name: "Royal Caterers", description: "Final catering payment – awards night", amount: 95000, advance_amount: 45000, bill_file_url: "invoice_royal_089.pdf", invoice_number: "RC-2026-089", status: "settled", advance_status: "settled", submitted_by: "u6", dept_verified_by: "u4", settled_by: "u1", submitted_at: "2026-01-08T10:00:00Z", dept_verified_at: "2026-01-08T15:00:00Z", settled_at: "2026-01-09T10:00:00Z" },
-  { id: "b5", event_id: "e2", dept_id: "d5", vendor_name: "Fresh Foods Ltd", description: "Catering supplies – fresh vegetables & fruits", amount: 32000, advance_amount: 15000, bill_file_url: "invoice_freshfoods_023.pdf", invoice_number: "FF-2026-023", status: "pending", advance_status: "advance-given", submitted_by: "u5", dept_verified_by: null, settled_by: null, submitted_at: "2026-02-22T09:00:00Z", dept_verified_at: null, settled_at: null },
+  {
+    id: "b1", event_id: "e1", dept_id: "d2", vendor_name: "AV Rentals India", description: "LED panel rental and AV equipment for main stage",
+    amount: 95000, advance_amount: 40000, bill_file_url: "av_rentals_inv_001.pdf", invoice_number: "AVR-2026-001",
+    status: "dept-verified", advance_status: "advance-given",
+    submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: null, settled_by: null,
+    submitted_at: "2026-02-20T10:00:00Z", dept_verified_at: "2026-02-21T14:00:00Z", ca_approved_at: null, settled_at: null,
+  },
+  {
+    id: "b2", event_id: "e1", dept_id: "d3", vendor_name: "Chef Kumar Catering", description: "Advance for catering supplies and raw materials",
+    amount: 520000, advance_amount: 200000, bill_file_url: "chef_kumar_inv_045.pdf", invoice_number: "CKC-2026-045",
+    status: "pending", advance_status: "advance-given",
+    submitted_by: "u3", dept_verified_by: null, ca_approved_by: null, settled_by: null,
+    submitted_at: "2026-02-25T09:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
+  },
+  {
+    id: "b3", event_id: "e1", dept_id: "d2", vendor_name: "LightMasters Pvt Ltd", description: "Complete lighting setup and ambient design for venue",
+    amount: 280000, advance_amount: 100000, bill_file_url: "lightmasters_inv_112.pdf", invoice_number: "LM-2026-112",
+    status: "settled", advance_status: "settled",
+    submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: "u6", settled_by: "u7",
+    submitted_at: "2026-02-10T11:00:00Z", dept_verified_at: "2026-02-11T10:00:00Z", ca_approved_at: "2026-02-12T09:00:00Z", settled_at: "2026-02-13T09:00:00Z",
+  },
+  {
+    id: "b4", event_id: "e1", dept_id: "d1", vendor_name: "ProSound Systems", description: "Sound system rental for main stage and breakout rooms",
+    amount: 380000, advance_amount: 150000, bill_file_url: "prosound_inv_089.pdf", invoice_number: "PSS-2026-089",
+    status: "pending", advance_status: "advance-given",
+    submitted_by: "u2", dept_verified_by: null, ca_approved_by: null, settled_by: null,
+    submitted_at: "2026-02-26T10:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
+  },
 ];
 
 const documents: Document[] = [
-  { id: "doc1", event_id: "e1", dept_id: null, name: "Venue Contract.pdf", folder: "Contracts", file_url: "", file_size: "2.4 MB", uploaded_by: "u2", uploaded_at: "2026-02-10T10:00:00Z" },
-  { id: "doc2", event_id: "e1", dept_id: "d1", name: "Stage Layout v2.png", folder: "Layouts", file_url: "", file_size: "1.8 MB", uploaded_by: "u3", uploaded_at: "2026-02-12T14:00:00Z" },
-  { id: "doc3", event_id: "e2", dept_id: null, name: "Fire Safety Permit.pdf", folder: "Permits", file_url: "", file_size: "540 KB", uploaded_by: "u2", uploaded_at: "2026-02-14T09:00:00Z" },
-  { id: "doc4", event_id: "e2", dept_id: "d5", name: "Catering Menu Options.docx", folder: "Other", file_url: "", file_size: "320 KB", uploaded_by: "u4", uploaded_at: "2026-02-15T11:00:00Z" },
-  { id: "doc5", event_id: "e1", dept_id: "d2", name: "Catering Agreement.pdf", folder: "Contracts", file_url: "", file_size: "1.1 MB", uploaded_by: "u4", uploaded_at: "2026-02-16T08:00:00Z" },
-  { id: "doc6", event_id: "e4", dept_id: null, name: "Post-event Report.pdf", folder: "Other", file_url: "", file_size: "3.2 MB", uploaded_by: "u2", uploaded_at: "2026-01-15T10:00:00Z" },
+  { id: "doc1", event_id: "e1", dept_id: "d1", name: "Truss Layout v3.pdf", folder: "Layouts", file_url: "", file_size: "8.1 MB", uploaded_by: "u1", uploaded_at: "2026-09-12T10:00:00Z" },
+  { id: "doc2", event_id: "e1", dept_id: null, name: "Main Contract – NSCI.pdf", folder: "Contracts", file_url: "", file_size: "2.4 MB", uploaded_by: "u5", uploaded_at: "2026-09-10T14:00:00Z" },
+  { id: "doc3", event_id: "e1", dept_id: null, name: "Fire Safety Permit.pdf", folder: "Permits", file_url: "", file_size: "1.2 MB", uploaded_by: "u5", uploaded_at: "2026-09-15T09:00:00Z" },
+  { id: "doc4", event_id: "e1", dept_id: "d3", name: "Catering Menu Final.pdf", folder: "Other", file_url: "", file_size: "0.8 MB", uploaded_by: "u3", uploaded_at: "2026-09-20T11:00:00Z" },
+];
+
+const activities: Activity[] = [
+  { id: "a1", event_id: "e1", user_id: "u1", description: "submitted a reimbursement to [Diwali Grand Gala] — AV Rentals India · ₹95,000", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 2 * 3600000).toISOString() },
+  { id: "a2", event_id: "e1", user_id: "u2", description: "marked task complete in [Diwali Grand Gala] — \"LED panels sourced, 120 units ready\"", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 5 * 3600000).toISOString() },
+  { id: "a3", event_id: "e1", user_id: "u3", description: "uploaded a document in [Diwali Grand Gala] — Truss Layout v3.pdf (Stage & AV dept)", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 24 * 3600000).toISOString() },
+  { id: "a4", event_id: "e1", user_id: "u5", description: "changed event status from Planning to Active in [Diwali Grand Gala]", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString() },
+  { id: "a5", event_id: "e1", user_id: "u6", description: "allocated budget to Catering dept — ₹6,00,000", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 4 * 24 * 3600000).toISOString() },
+];
+
+const deptHealthData: DeptHealth[] = [
+  { name: "Stage & AV", tasksDone: 6, tasksTotal: 8, budgetPct: 84 },
+  { name: "Lighting", tasksDone: 6, tasksTotal: 6, budgetPct: 107 },
+  { name: "Catering", tasksDone: 3, tasksTotal: 10, budgetPct: 20 },
+  { name: "Logistics", tasksDone: 2, tasksTotal: 5, budgetPct: 22 },
+  { name: "Security", tasksDone: 0, tasksTotal: 4, budgetPct: 0 },
+  { name: "Hospitality", tasksDone: 4, tasksTotal: 6, budgetPct: 27 },
+  { name: "IT & Tech", tasksDone: 2, tasksTotal: 7, budgetPct: 20 },
+  { name: "Marketing", tasksDone: 8, tasksTotal: 9, budgetPct: 70 },
 ];
 
 const notifications: Notification[] = [
-  { id: "n1", user_id: "u1", body: "New bill submitted by Vikram for LightPro India (₹45,000)", type: "bill_submitted", read: false, created_at: "2026-02-20T10:05:00Z", link_to: "/billing" },
-  { id: "n2", user_id: "u1", body: "Spice Kitchen bill verified by Dept Head Sneha", type: "bill_verified", read: false, created_at: "2026-02-19T14:05:00Z", link_to: "/billing" },
-  { id: "n3", user_id: "u3", body: "Task 'Finalize catering contract' is overdue", type: "task_overdue", read: false, created_at: "2026-02-21T08:00:00Z", link_to: "/tasks/t5" },
-  { id: "n4", user_id: "u5", body: "You've been assigned: Install main stage LED panels", type: "task_assigned", read: true, created_at: "2026-02-18T10:00:00Z", link_to: "/tasks/t1" },
-  { id: "n5", user_id: "u6", body: "City Transport Co. bill has been settled by Finance", type: "bill_settled", read: true, created_at: "2026-02-17T09:05:00Z", link_to: "/billing" },
+  { id: "n1", user_id: "u7", body: "Aarav Singh submitted a bill for AV Rentals India (₹95,000)", type: "bill_submitted", read: false, created_at: "2026-02-28T10:05:00Z", link_to: "/billing" },
+  { id: "n2", user_id: "u7", body: "AV Rentals India bill verified by Dept Head Kavya Nair", type: "bill_verified", read: false, created_at: "2026-02-27T14:05:00Z", link_to: "/billing" },
+  { id: "n3", user_id: "u7", body: "Task 'Crockery rental arrangement' is overdue", type: "task_overdue", read: false, created_at: "2026-02-26T08:00:00Z", link_to: "/tasks" },
 ];
 
 interface MockDataContextType {
@@ -216,11 +347,12 @@ interface MockDataContextType {
   subscription: Subscription;
   events: Event[];
   departments: Department[];
-  departmentMembers: DepartmentMember[];
   tasks: Task[];
   taskComments: TaskComment[];
   bills: Bill[];
   documents: Document[];
+  activities: Activity[];
+  deptHealth: DeptHealth[];
   notifications: Notification[];
   setNotifications: (n: Notification[]) => void;
   setTasks: (t: Task[]) => void;
@@ -239,6 +371,7 @@ interface MockDataContextType {
   getCommentsByTask: (taskId: string) => TaskComment[];
   getBillsByEvent: (eventId: string) => Bill[];
   getDocsByEvent: (eventId: string) => Document[];
+  getActivitiesByEvent: (eventId: string) => Activity[];
   getUserNotifications: () => Notification[];
   isFreePlan: boolean;
 }
@@ -246,7 +379,7 @@ interface MockDataContextType {
 const MockDataContext = createContext<MockDataContextType | null>(null);
 
 export function MockDataProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<Profile>(profiles[0]);
+  const [currentUser, setCurrentUser] = useState<Profile>(profiles[6]); // Sumit Patel
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasSelectedRole, setHasSelectedRole] = useState(true);
   const [notifs, setNotifications] = useState(notifications);
@@ -256,13 +389,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((email: string, _password: string) => {
     const found = profiles.find(p => p.email === email);
-    if (found) {
-      setCurrentUser(found);
-      setIsAuthenticated(true);
-      setHasSelectedRole(true);
-      return true;
-    }
-    setCurrentUser(profiles[0]);
+    if (found) { setCurrentUser(found); } else { setCurrentUser(profiles[6]); }
     setIsAuthenticated(true);
     setHasSelectedRole(true);
     return true;
@@ -291,19 +418,19 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   const getCommentsByTask = (taskId: string) => commentList.filter(c => c.task_id === taskId);
   const getBillsByEvent = (eventId: string) => billList.filter(b => b.event_id === eventId);
   const getDocsByEvent = (eventId: string) => documents.filter(d => d.event_id === eventId);
+  const getActivitiesByEvent = (eventId: string) => activities.filter(a => a.event_id === eventId);
   const getUserNotifications = () => notifs.filter(n => n.user_id === currentUser.id);
 
   return (
     <MockDataContext.Provider value={{
       currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated,
       hasSelectedRole, setHasSelectedRole,
-      profiles, subscription, events, departments, departmentMembers,
-      tasks: taskList, taskComments: commentList, bills: billList, documents, notifications: notifs,
+      profiles, subscription, events, departments,
+      tasks: taskList, taskComments: commentList, bills: billList, documents, activities, deptHealth: deptHealthData, notifications: notifs,
       setNotifications, setTasks, setBills, setTaskComments,
       login, signup, logout, selectRole,
-      getProfile, getEvent, getDepartment, getDeptsByEvent,
-      getTasksByEvent, getTasksByDept, getCommentsByTask, getBillsByEvent,
-      getDocsByEvent, getUserNotifications,
+      getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
+      getCommentsByTask, getBillsByEvent, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
       isFreePlan: subscription.plan === "free",
     }}>
       {children}
