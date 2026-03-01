@@ -53,15 +53,15 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <MockDataProvider>
+    <MockDataProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>
-      </MockDataProvider>
-    </TooltipProvider>
+      </TooltipProvider>
+    </MockDataProvider>
   </QueryClientProvider>
 );
 
