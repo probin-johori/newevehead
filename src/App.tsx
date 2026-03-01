@@ -32,16 +32,15 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
-      <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/events/e1" /> : <LoginPage />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/events/e1" /> : <SignupPage />} />
       <Route path="/onboarding/role" element={<RoleSelectionPage />} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/events/e1" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:id" element={<EventDetailPage />} />
         <Route path="tasks" element={<TasksPage />} />
-        <Route path="tasks/:id" element={<TasksPage />} />
         <Route path="billing" element={<BillingPage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="teams" element={<TeamsPage />} />

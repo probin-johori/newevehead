@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { TopBar } from "@/components/TopBar";
 import { useMockData } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Envelope, Phone, UserPlus, X } from "@phosphor-icons/react";
@@ -23,47 +22,47 @@ export default function TeamsPage() {
   const member = selectedMember ? profiles.find(p => p.id === selectedMember) : null;
 
   return (
-    <>
-      <TopBar title="Team" subtitle={`${profiles.length} members`} />
-      <div className="p-6 max-w-[960px] space-y-5">
-        <div className="flex items-center justify-end">
-          {(currentUser.role === "sa" || currentUser.role === "org") && (
-            <button onClick={() => setShowInvite(true)} className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-              <UserPlus size={15} /> Invite Member
-            </button>
-          )}
+    <div className="p-6 max-w-[960px]">
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-2xl font-semibold">Team</h1>
+          <p className="text-sm text-muted-foreground">{profiles.length} members</p>
         </div>
+        {(currentUser.role === "sa" || currentUser.role === "org") && (
+          <button onClick={() => setShowInvite(true)} className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+            <UserPlus size={15} /> Invite Member
+          </button>
+        )}
+      </div>
 
-        {/* Table */}
-        <div className="rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
-                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Phone</th>
-                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
-                <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+      <div className="rounded-xl border border-border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+              <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
+              <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Phone</th>
+              <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
+              <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+            </tr>
+          </thead>
+          <tbody>
+            {profiles.map(p => (
+              <tr key={p.id} onClick={() => setSelectedMember(p.id)} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 transition-colors">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
+                    <span className="font-medium">{p.name}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground">{p.email}</td>
+                <td className="px-4 py-3 text-muted-foreground">{p.phone || "—"}</td>
+                <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{roleLabels[p.role]}</span></td>
+                <td className="px-4 py-3 text-muted-foreground">{p.dept_name || "—"}</td>
               </tr>
-            </thead>
-            <tbody>
-              {profiles.map(p => (
-                <tr key={p.id} onClick={() => setSelectedMember(p.id)} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
-                      <span className="font-medium">{p.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.email}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.phone || "—"}</td>
-                  <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{roleLabels[p.role]}</span></td>
-                  <td className="px-4 py-3 text-muted-foreground">{p.dept_name || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Member Detail Modal */}
@@ -111,7 +110,7 @@ export default function TeamsPage() {
                   <p className="text-sm font-semibold">Manage</p>
                   <div className="flex gap-2">
                     <button className="rounded-full border border-border bg-secondary px-3 py-1.5 text-sm hover:bg-muted transition-colors">Edit Details</button>
-                    <select defaultValue={member.role} className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-foreground/30">
+                    <select defaultValue={member.role} className="rounded-lg border border-border bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none">
                       <option value="sa">Super Admin</option>
                       <option value="org">Organiser</option>
                       <option value="dept_head">Dept Head</option>
@@ -138,19 +137,19 @@ export default function TeamsPage() {
               <p className="text-sm text-muted-foreground">An invitation will be sent to their email or phone.</p>
               <div>
                 <label className="text-sm font-medium">Name</label>
-                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" placeholder="Full name" />
+                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Full name" />
               </div>
               <div>
                 <label className="text-sm font-medium">Email</label>
-                <input type="email" className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" placeholder="email@example.com" />
+                <input type="email" className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="email@example.com" />
               </div>
               <div>
                 <label className="text-sm font-medium">Phone</label>
-                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" placeholder="+91 98765 43210" />
+                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="+91 98765 43210" />
               </div>
               <div>
                 <label className="text-sm font-medium">Role</label>
-                <select className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm pr-8 focus:outline-none focus:border-foreground/30">
+                <select className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm pr-8 focus:outline-none">
                   <option value="dept_member">Member</option>
                   <option value="dept_head">Dept Head</option>
                   <option value="org">Organiser</option>
@@ -158,7 +157,7 @@ export default function TeamsPage() {
               </div>
               <div>
                 <label className="text-sm font-medium">Department</label>
-                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-foreground/30" placeholder="e.g. Lighting, Catering" />
+                <input className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Lighting, Catering" />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowInvite(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-muted transition-colors">Cancel</button>
@@ -168,6 +167,6 @@ export default function TeamsPage() {
           </div>
         </>
       )}
-    </>
+    </div>
   );
 }
