@@ -22,32 +22,32 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary font-serif text-2xl text-primary-foreground">E</div>
-          <h1 className="text-2xl font-serif">Create your account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Get started with EventOps</p>
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-rose-500 text-lg font-bold text-white">ZH</div>
+          <h1 className="text-2xl font-semibold">Create your account</h1>
+          <p className="text-sm text-muted-foreground mt-1">Get started with Zero Hour Events</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-stroke bg-card p-6">
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div>
             <label className="text-sm font-medium">Full Name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" placeholder="John Doe" />
+              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="John Doe" />
           </div>
           <div>
             <label className="text-sm font-medium">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" placeholder="you@example.com" />
+              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="you@example.com" />
           </div>
           <div>
             <label className="text-sm font-medium">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" placeholder="••••••••" />
+              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="••••••••" />
           </div>
-          <button type="submit" className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
+          <button type="submit" className="w-full rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
             Create Account
           </button>
           <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link to="/login" className="text-accent-mid hover:underline">Sign in</Link>
+            Already have an account? <Link to="/login" className="text-accent hover:underline">Sign in</Link>
           </p>
         </form>
       </div>

@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import {
   ChartBar, Hash, Plus, DotsThreeOutline, CaretDown, CaretRight,
   Funnel, Clock, Upload, User, ShieldCheck, UserPlus,
-  ListChecks, FolderOpen, CheckCircle, XCircle, HourglassSimple
+  ListChecks, FolderOpen, CheckCircle, XCircle, HourglassSimple, Receipt
 } from "@phosphor-icons/react";
 
 type MainTab = "home" | "task" | "billing" | "document" | "team";
