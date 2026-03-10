@@ -16,50 +16,57 @@ export function AppSidebar() {
   const location = useLocation();
 
   const isActive = (to: string) => {
-    if (to === "/dashboard") return location.pathname === "/dashboard";
+    if (to === "/dashboard") return location.pathname === "/dashboard" || location.pathname.startsWith("/events");
     return location.pathname.startsWith(to);
   };
 
   return (
-    <aside className="fixed left-0 top-[52px] z-20 flex h-[calc(100vh-52px)] w-16 flex-col items-center border-r border-border bg-background py-3">
-      <nav className="flex flex-1 flex-col items-center gap-1">
-        {navItems.map(item => {
-          const active = isActive(item.to);
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors w-14 ${
-                active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              <item.icon size={20} weight={active ? "fill" : "regular"} />
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+    <aside className="fixed left-0 top-0 z-30 flex h-screen w-[70px] flex-col items-center p-2">
+      <div className="flex h-full w-full flex-col items-center rounded-2xl bg-sidebar py-3 shadow-lg">
+        {/* Logo */}
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-rose-500 text-[11px] font-bold text-white mb-4">
+          ZH
+        </div>
 
-      <div className="mt-auto flex flex-col items-center gap-2 pb-2">
-        <NavLink
-          to="/settings"
-          className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors w-14 ${
-            location.pathname.startsWith("/settings")
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-          }`}
-        >
-          <GearSix size={20} weight={location.pathname.startsWith("/settings") ? "fill" : "regular"} />
-          <span className="text-[10px] font-medium">Settings</span>
-        </NavLink>
-        <NavLink to="/settings" className="mt-1">
-          <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
-        </NavLink>
-        <span className="text-[9px] text-muted-foreground font-medium text-center leading-tight">
-          {currentUser.name.split(' ')[0]}<br/>{currentUser.name.split(' ')[1]}
-        </span>
+        <nav className="flex flex-1 flex-col items-center gap-0.5">
+          {navItems.map(item => {
+            const active = isActive(item.to);
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to === "/dashboard" ? "/events/e1" : item.to}
+                className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 transition-colors w-[54px] ${
+                  active
+                    ? "bg-white/15 text-white"
+                    : "text-white/50 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                <item.icon size={20} weight={active ? "fill" : "regular"} />
+                <span className="text-[10px] font-medium">{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto flex flex-col items-center gap-1 pb-2">
+          <NavLink
+            to="/settings"
+            className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 transition-colors w-[54px] ${
+              location.pathname.startsWith("/settings")
+                ? "bg-white/15 text-white"
+                : "text-white/50 hover:text-white hover:bg-white/10"
+            }`}
+          >
+            <GearSix size={20} weight={location.pathname.startsWith("/settings") ? "fill" : "regular"} />
+            <span className="text-[10px] font-medium">Settings</span>
+          </NavLink>
+          <NavLink to="/settings" className="mt-1">
+            <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
+          </NavLink>
+          <span className="text-[9px] text-white/50 font-medium text-center leading-tight mt-0.5">
+            My Account
+          </span>
+        </div>
       </div>
     </aside>
   );
