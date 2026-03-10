@@ -12,7 +12,7 @@ export default function AppLayout() {
       {/* Column 2 + 3 share a container */}
       <div className="flex flex-1 flex-col ml-[70px]">
         <TopBar />
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 border rounded">
           {/* Column 2: Nav panel */}
           <NavPanel />
           {/* Divider between nav panel and content */}
@@ -23,6 +23,6 @@ export default function AppLayout() {
           </main>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
