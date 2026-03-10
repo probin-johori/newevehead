@@ -52,11 +52,12 @@
     --info: 226 70% 55%;
     --info-foreground: 0 0% 100%;
 
-    --nav-panel: 240 5% 97.6%;
+    --nav-panel: 0 0% 97.6%;
     --stroke: 0 0% 92%;
     --selected: 0 0% 92%;
     --icon-btn: 0 0% 92%;
     --icon-btn-fg: 0 0% 35%;
+    --page-bg: 0 0% 94%;
 
     font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   }
@@ -68,7 +69,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-page-bg text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
