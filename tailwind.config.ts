@@ -73,6 +73,7 @@ export default {
           foreground: "hsl(var(--info-foreground))",
         },
         "nav-panel": "hsl(var(--nav-panel))",
+        "page-bg": "hsl(var(--page-bg))",
         stroke: "hsl(var(--stroke))",
         selected: "hsl(var(--selected))",
         "icon-btn": "hsl(var(--icon-btn))",

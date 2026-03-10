@@ -18,8 +18,17 @@ function getMainTab(pathname: string): MainTab {
   return "home";
 }
 
+const sectionLabelClass = "text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" as const;
+const sectionLabelColor = { color: "#9A9A9A" };
+
+const navItemBase = "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors";
+const navItemActive = `${navItemBase} bg-selected text-foreground`;
+const navItemInactive = `${navItemBase} text-muted-foreground hover:bg-selected hover:text-foreground`;
+
+const iconBtnClass = "flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-[hsl(0_0%_88%)] transition-colors";
+
 export function NavPanel() {
-  const { events, getDeptsByEvent, profiles, departments } = useMockData();
+  const { events, getDeptsByEvent, departments } = useMockData();
   const location = useLocation();
   const params = useParams<{ id: string }>();
   const [showAllEvents, setShowAllEvents] = useState(false);
@@ -45,7 +54,10 @@ export function NavPanel() {
   useEffect(() => {
     if (!isResizing) return;
     const handleMouseMove = (e: MouseEvent) => {
-      const newW = Math.max(MIN_W, Math.min(MAX_W, e.clientX - 70));
+      const navEl = document.getElementById("zh-nav-panel");
+      if (!navEl) return;
+      const rect = navEl.getBoundingClientRect();
+      const newW = Math.max(MIN_W, Math.min(MAX_W, e.clientX - rect.left));
       setWidth(newW);
       localStorage.setItem(STORAGE_KEY, String(newW));
     };
@@ -74,11 +86,10 @@ export function NavPanel() {
     });
   };
 
-  // Unique departments across all events
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
 
   return (
-    <div className="relative flex-shrink-0" style={{ width }}>
+    <div id="zh-nav-panel" className="relative flex-shrink-0" style={{ width }}>
       <aside
         className="h-full overflow-y-auto bg-nav-panel"
         style={{ width }}
@@ -88,14 +99,10 @@ export function NavPanel() {
           {mainTab === "home" && (
             <>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Home</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>HOME</p>
                 <NavLink
                   to="/dashboard"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${
-                      isActive ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"
-                    }`
-                  }
+                  className={({ isActive }) => isActive ? navItemActive : navItemInactive}
                 >
                   <ChartBar size={15} />
                   Dashboard
@@ -104,8 +111,8 @@ export function NavPanel() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Events</p>
-                  <button className="flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
+                  <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>EVENTS</p>
+                  <button className={iconBtnClass}>
                     <Plus size={12} weight="bold" />
                   </button>
                 </div>
@@ -117,8 +124,8 @@ export function NavPanel() {
                       <NavLink
                         key={ev.id}
                         to={`/events/${ev.id}`}
-                        className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
-                          isSelected ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"
+                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
+                          isSelected ? "bg-selected text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"
                         }`}
                       >
                         <div
@@ -146,8 +153,8 @@ export function NavPanel() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Departments</p>
-                  <button className="flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
+                  <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>DEPARTMENTS</p>
+                  <button className={iconBtnClass}>
                     <Plus size={12} weight="bold" />
                   </button>
                 </div>
@@ -156,7 +163,7 @@ export function NavPanel() {
                     <NavLink
                       key={dept.id}
                       to={`/events/${dept.event_id}?tab=departments`}
-                      className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors"
+                      className={navItemInactive}
                     >
                       <Hash size={13} className="shrink-0" />
                       <span className="truncate">{dept.name}</span>
@@ -180,25 +187,25 @@ export function NavPanel() {
           {mainTab === "task" && (
             <>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Tasks</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>TASKS</p>
                 <div className="space-y-0.5">
-                  <NavLink to="/tasks?view=my" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                  <NavLink to="/tasks?view=my" className={navItemInactive}>
                     <User size={14} /> My Tasks
                   </NavLink>
-                  <NavLink to="/tasks" end className={({ isActive }) => `flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${isActive ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
+                  <NavLink to="/tasks" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
                     <ListChecks size={14} /> All Tasks
                   </NavLink>
                 </div>
               </div>
               <div>
-                <button onClick={() => toggleSection("events-task")} className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 w-full">
+                <button onClick={() => toggleSection("events-task")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
                   {expandedSections.has("events-task") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  By Event
+                  BY EVENT
                 </button>
                 {expandedSections.has("events-task") && (
                   <div className="space-y-0.5 pl-1">
                     {events.map(ev => (
-                      <NavLink key={ev.id} to={`/tasks?event=${ev.id}`} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors truncate">
+                      <NavLink key={ev.id} to={`/tasks?event=${ev.id}`} className={`${navItemInactive} truncate`}>
                         <span className="truncate">{ev.name}</span>
                       </NavLink>
                     ))}
@@ -206,12 +213,12 @@ export function NavPanel() {
                 )}
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Filters</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>FILTERS</p>
                 <div className="space-y-0.5">
-                  <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors w-full text-left">
+                  <button className={`${navItemInactive} w-full text-left`}>
                     <Funnel size={14} /> Status
                   </button>
-                  <button className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors w-full text-left">
+                  <button className={`${navItemInactive} w-full text-left`}>
                     <Funnel size={14} /> Priority
                   </button>
                 </div>
@@ -223,22 +230,22 @@ export function NavPanel() {
           {mainTab === "billing" && (
             <>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Billing</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>BILLING</p>
                 <div className="space-y-0.5">
-                  <NavLink to="/billing" end className={({ isActive }) => `flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${isActive ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
+                  <NavLink to="/billing" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
                     <Receipt size={14} /> All Billing
                   </NavLink>
                 </div>
               </div>
               <div>
-                <button onClick={() => toggleSection("events-billing")} className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 w-full">
+                <button onClick={() => toggleSection("events-billing")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
                   {expandedSections.has("events-billing") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  By Event
+                  BY EVENT
                 </button>
                 {expandedSections.has("events-billing") && (
                   <div className="space-y-0.5 pl-1">
                     {events.map(ev => (
-                      <NavLink key={ev.id} to={`/billing?event=${ev.id}`} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors truncate">
+                      <NavLink key={ev.id} to={`/billing?event=${ev.id}`} className={`${navItemInactive} truncate`}>
                         <span className="truncate">{ev.name}</span>
                       </NavLink>
                     ))}
@@ -246,13 +253,13 @@ export function NavPanel() {
                 )}
               </div>
               <div className="space-y-0.5">
-                <NavLink to="/billing?status=pending" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/billing?status=pending" className={navItemInactive}>
                   <HourglassSimple size={14} /> Pending Approvals
                 </NavLink>
-                <NavLink to="/billing?status=settled" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/billing?status=settled" className={navItemInactive}>
                   <CheckCircle size={14} /> Approved
                 </NavLink>
-                <NavLink to="/billing?status=rejected" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/billing?status=rejected" className={navItemInactive}>
                   <XCircle size={14} /> Rejected
                 </NavLink>
               </div>
@@ -263,22 +270,22 @@ export function NavPanel() {
           {mainTab === "document" && (
             <>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Documents</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>DOCUMENTS</p>
                 <div className="space-y-0.5">
-                  <NavLink to="/documents" end className={({ isActive }) => `flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${isActive ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
+                  <NavLink to="/documents" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
                     <FolderOpen size={14} /> All Documents
                   </NavLink>
                 </div>
               </div>
               <div>
-                <button onClick={() => toggleSection("events-doc")} className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 w-full">
+                <button onClick={() => toggleSection("events-doc")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
                   {expandedSections.has("events-doc") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  By Event
+                  BY EVENT
                 </button>
                 {expandedSections.has("events-doc") && (
                   <div className="space-y-0.5 pl-1">
                     {events.map(ev => (
-                      <NavLink key={ev.id} to={`/documents?event=${ev.id}`} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors truncate">
+                      <NavLink key={ev.id} to={`/documents?event=${ev.id}`} className={`${navItemInactive} truncate`}>
                         <span className="truncate">{ev.name}</span>
                       </NavLink>
                     ))}
@@ -286,10 +293,10 @@ export function NavPanel() {
                 )}
               </div>
               <div className="space-y-0.5">
-                <NavLink to="/documents?view=recent" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/documents?view=recent" className={navItemInactive}>
                   <Clock size={14} /> Recently Added
                 </NavLink>
-                <NavLink to="/documents?view=mine" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/documents?view=mine" className={navItemInactive}>
                   <Upload size={14} /> My Uploads
                 </NavLink>
               </div>
@@ -300,25 +307,25 @@ export function NavPanel() {
           {mainTab === "team" && (
             <>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Team</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>TEAM</p>
                 <div className="space-y-0.5">
-                  <NavLink to="/teams" end className={({ isActive }) => `flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition-colors ${isActive ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
+                  <NavLink to="/teams" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
                     <ShieldCheck size={14} /> All Members
                   </NavLink>
                 </div>
               </div>
               <div>
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Department Teams</p>
+                <p className={sectionLabelClass} style={sectionLabelColor}>DEPARTMENT TEAMS</p>
                 <div className="space-y-0.5">
                   {uniqueDepts.map(name => (
-                    <NavLink key={name} to={`/teams?dept=${encodeURIComponent(name)}`} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                    <NavLink key={name} to={`/teams?dept=${encodeURIComponent(name)}`} className={navItemInactive}>
                       <Hash size={13} /> <span className="truncate">{name}</span>
                     </NavLink>
                   ))}
                 </div>
               </div>
               <div>
-                <NavLink to="/teams?invite=true" className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-selected hover:text-foreground transition-colors">
+                <NavLink to="/teams?invite=true" className={navItemInactive}>
                   <UserPlus size={14} /> Invite Members
                 </NavLink>
               </div>

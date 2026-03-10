@@ -22,7 +22,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="flex h-[52px] items-center justify-between px-5 bg-background">
+    <header className="flex h-[52px] items-center justify-between px-5 bg-page-bg shrink-0">
       {/* Left: Logo + org name */}
       <div className="flex items-center gap-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-rose-500 text-[10px] font-bold text-white">
@@ -36,7 +36,7 @@ export function TopBar() {
 
       {/* Right: Search + Notifications + Avatar */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-1.5 w-[240px]">
+        <div className="flex items-center gap-2 rounded-full bg-background border border-stroke px-4 py-1.5 w-[240px]">
           <MagnifyingGlass size={14} className="text-muted-foreground" />
           <input
             type="text"
@@ -49,7 +49,7 @@ export function TopBar() {
         <div className="relative">
           <button
             onClick={() => setNotifOpen(!notifOpen)}
-            className="relative flex h-8 w-8 items-center justify-center rounded-full hover:bg-secondary transition-colors"
+            className="relative flex h-8 w-8 items-center justify-center rounded-full hover:bg-background transition-colors"
           >
             <Bell size={18} weight={unreadCount > 0 ? "fill" : "regular"} className="text-foreground" />
             {unreadCount > 0 && (
