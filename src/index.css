@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,39 +7,39 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 0 0% 6%;
+    --foreground: 0 0% 7%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 6%;
+    --card-foreground: 0 0% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 6%;
+    --popover-foreground: 0 0% 7%;
 
-    --primary: 0 0% 6%;
+    --primary: 0 0% 4%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 6%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 0 0% 7%;
 
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 36%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 6%;
+    --accent: 12 80% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 76% 54%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 91%;
-    --input: 0 0% 91%;
-    --ring: 0 0% 6%;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 12 80% 55%;
 
     --radius: 0.5rem;
 
-    --sidebar-background: 0 0% 6%;
+    --sidebar-background: 0 0% 4%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-primary-foreground: 0 0% 4%;
     --sidebar-accent: 0 0% 100% / 0.12;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 100% / 0.10;
@@ -52,23 +52,19 @@
     --info: 226 70% 55%;
     --info-foreground: 0 0% 100%;
 
-    --accent-blue: 228 60% 55%;
-    --accent-blue-light: 225 100% 97%;
-    --accent-mid: 228 60% 55%;
-    --accent-light: 225 100% 97%;
+    --nav-panel: 240 5% 97.6%;
+    --stroke: 0 0% 92%;
+    --selected: 0 0% 92%;
+    --icon-btn: 0 0% 92%;
+    --icon-btn-fg: 0 0% 35%;
 
-    --text-secondary: 0 0% 36%;
-    --text-tertiary: 0 0% 63%;
-    --surface-alt: 0 0% 96%;
-    --border-strong: 0 0% 82%;
-
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-stroke;
   }
 
   body {

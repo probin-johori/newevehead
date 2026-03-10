@@ -26,16 +26,16 @@ export default function SettingsPage() {
   ];
 
   return (
-    <div className="p-6 max-w-[960px]">
-      <h1 className="text-2xl font-semibold mb-1">Settings</h1>
+    <div className="p-6 w-full">
+      <h1 className="text-xl font-semibold mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-5">Manage your account</p>
 
       <div className="flex gap-8">
         <div className="w-44 shrink-0 space-y-1">
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-                tab === t.key ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                tab === t.key ? "bg-selected font-medium text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-selected"
               }`}>
               {t.label}
             </button>
@@ -45,7 +45,7 @@ export default function SettingsPage() {
         <div className="flex-1">
           {tab === "subscription" && (
             <div className="space-y-6">
-              <div className="rounded-xl border border-border p-5 space-y-3">
+              <div className="rounded-xl border border-stroke p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Current Plan</p>
@@ -53,14 +53,14 @@ export default function SettingsPage() {
                   </div>
                   <p className="text-sm text-muted-foreground">{subscription.slots_used} / {subscription.slots_total} slots used</p>
                 </div>
-                <div className="h-1.5 rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${(subscription.slots_used / subscription.slots_total) * 100}%` }} />
+                <div className="h-1.5 rounded-full bg-secondary">
+                  <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(subscription.slots_used / subscription.slots_total) * 100}%` }} />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 {planDetails.map(p => (
-                  <div key={p.plan} className={`rounded-xl border p-5 ${subscription.plan === p.plan ? "border-foreground/30 bg-blue-50/30" : "border-border"}`}>
+                  <div key={p.plan} className={`rounded-xl border p-5 ${subscription.plan === p.plan ? "border-accent/30 bg-orange-50/20" : "border-stroke"}`}>
                     <p className="text-base font-semibold">{p.name}</p>
                     <p className="text-lg font-semibold mt-1">{p.price}</p>
                     <p className="text-xs text-muted-foreground mt-1">{p.slots}</p>
@@ -73,7 +73,7 @@ export default function SettingsPage() {
                       ))}
                     </div>
                     <button className={`mt-4 w-full rounded-full px-3 py-2 text-sm font-medium transition-colors ${
-                      subscription.plan === p.plan ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-muted"
+                      subscription.plan === p.plan ? "bg-foreground text-background" : "bg-secondary text-foreground hover:bg-selected"
                     }`}>
                       {subscription.plan === p.plan ? "Current Plan" : "Upgrade"}
                     </button>
@@ -83,27 +83,26 @@ export default function SettingsPage() {
 
               <div className="space-y-3">
                 <h3 className="text-base font-semibold">Event Slot Usage</h3>
-                <div className="rounded-xl border border-border overflow-hidden">
+                <div className="rounded-xl border border-stroke overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                        <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">Slot</th>
+                      <tr className="border-b border-stroke">
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Slot</th>
                       </tr>
                     </thead>
                     <tbody>
                       {events.map(ev => (
-                        <tr key={ev.id} className="border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30" onClick={() => navigate(`/events/${ev.id}`)}>
+                        <tr key={ev.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected" onClick={() => navigate(`/events/${ev.id}`)}>
                           <td className="px-4 py-3 font-medium">{ev.name}</td>
                           <td className="px-4 py-3"><StatusBadge status={ev.status} /></td>
-                          <td className="px-4 py-3"><span className="rounded-full bg-blue-50 text-blue-600 px-2 py-0.5 text-[11px] font-medium">Occupied</span></td>
+                          <td className="px-4 py-3"><span className="rounded-full bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 text-[11px] font-medium">Occupied</span></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <p className="text-xs text-muted-foreground">Completing or archiving an event does not free the slot. Slots reset on billing cycle.</p>
               </div>
             </div>
           )}
@@ -120,15 +119,15 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Name</label>
-                  <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                  <input defaultValue={currentUser.name} className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Email</label>
-                  <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                  <input defaultValue={currentUser.email} className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Role</label>
-                  <input value={roleLabels[currentUser.role]} disabled className="mt-1 block w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed" />
+                  <input value={roleLabels[currentUser.role]} disabled className="mt-1 block w-full rounded-lg border border-stroke bg-muted px-3 py-2 text-sm text-muted-foreground cursor-not-allowed" />
                 </div>
                 <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">Save Changes</button>
               </div>

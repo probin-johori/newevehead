@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["'Inter'", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["'DM Sans'", "system-ui", "-apple-system", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -41,8 +41,6 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
-          mid: "hsl(var(--accent-mid))",
-          light: "hsl(var(--accent-light))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -74,6 +72,11 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        "nav-panel": "hsl(var(--nav-panel))",
+        stroke: "hsl(var(--stroke))",
+        selected: "hsl(var(--selected))",
+        "icon-btn": "hsl(var(--icon-btn))",
+        "icon-btn-fg": "hsl(var(--icon-btn-fg))",
       },
       borderRadius: {
         lg: "var(--radius)",
