@@ -16,6 +16,8 @@ import BillingPage from "@/pages/Billing";
 import DocumentsPage from "@/pages/Documents";
 import TeamsPage from "@/pages/Teams";
 import SettingsPage from "@/pages/Settings";
+import DepartmentsPage from "@/pages/Departments";
+import NotificationsPage from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,9 @@ function AppRoutes() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="teams" element={<TeamsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="departments/:name" element={<DepartmentsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
