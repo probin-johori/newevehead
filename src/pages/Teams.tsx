@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMockData } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { Envelope, Phone, UserPlus, X } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 
@@ -26,6 +27,8 @@ export default function TeamsPage() {
   });
 
   const member = selectedMember ? profiles.find(p => p.id === selectedMember) : null;
+
+  useScrollLock(!!selectedMember || showInvite);
 
   const handleAccessChange = (userId: string, level: string) => {
     setAccessMap(prev => ({ ...prev, [userId]: level }));
@@ -60,8 +63,8 @@ export default function TeamsPage() {
           </thead>
           <tbody>
             {profiles.map(p => (
-              <tr key={p.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors">
-                <td className="px-4 py-3 cursor-pointer" onClick={() => setSelectedMember(p.id)}>
+              <tr key={p.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer" onClick={() => setSelectedMember(p.id)}>
+                <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
                     <span className="font-medium">{p.name}</span>
@@ -72,7 +75,7 @@ export default function TeamsPage() {
                 <td className="px-4 py-3 text-muted-foreground">{p.phone || "—"}</td>
                 <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{roleLabels[p.role]}</span></td>
                 <td className="px-4 py-3 text-muted-foreground">{p.dept_name || "—"}</td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
                   {(currentUser.role === "sa" || currentUser.role === "org") ? (
                     <select
                       value={accessMap[p.id] || "View Only"}
@@ -120,6 +123,10 @@ export default function TeamsPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Phone</p>
                   <p className="flex items-center gap-1.5"><Phone size={13} />{member.phone || "Not provided"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Access Level</p>
+                  <p className="text-sm">{accessMap[member.id] || "View Only"}</p>
                 </div>
               </div>
             </div>

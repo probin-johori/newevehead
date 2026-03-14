@@ -1,18 +1,15 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useMockData } from "@/context/MockDataContext";
-import { UserAvatar } from "@/components/UserAvatar";
 import { House, ListChecks, Receipt, FileText, UsersThree, GearSix } from "@phosphor-icons/react";
 
 const navItems = [
   { to: "/dashboard", icon: House, label: "Home" },
-  { to: "/tasks", icon: ListChecks, label: "Task" },
+  { to: "/tasks", icon: ListChecks, label: "Tasks" },
   { to: "/billing", icon: Receipt, label: "Billing" },
-  { to: "/documents", icon: FileText, label: "Document" },
-  { to: "/teams", icon: UsersThree, label: "Team" },
+  { to: "/documents", icon: FileText, label: "Docs" },
+  { to: "/teams", icon: UsersThree, label: "Teams" },
 ];
 
 export function AppSidebar() {
-  const { currentUser } = useMockData();
   const location = useLocation();
 
   const isActive = (to: string) => {
@@ -60,12 +57,6 @@ export function AppSidebar() {
             <GearSix size={20} weight={location.pathname.startsWith("/settings") ? "fill" : "regular"} />
             <span className="text-[10px] font-medium">Settings</span>
           </NavLink>
-          <NavLink to="/settings" className="mt-1">
-            <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
-          </NavLink>
-          <span className="text-[9px] text-white/50 font-medium text-center leading-tight mt-0.5">
-            My Profile
-          </span>
         </div>
       </div>
     </aside>

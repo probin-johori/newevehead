@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMockData, formatINR } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -18,7 +18,9 @@ const roleLabels: Record<string, string> = {
 export default function SettingsPage() {
   const { currentUser, subscription, events } = useMockData();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(currentUser.role === "sa" ? "subscription" : "profile");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || (currentUser.role === "sa" ? "subscription" : "profile");
+  const [tab, setTab] = useState(initialTab);
 
   const tabs = [
     ...(currentUser.role === "sa" ? [{ key: "subscription", label: "Subscription & Plans" }] : []),

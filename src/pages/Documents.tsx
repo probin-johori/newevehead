@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useMockData, formatDate } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Eye, ArrowLeft, Plus, FolderOpen, Trash } from "@phosphor-icons/react";
+import { useScrollLock } from "@/hooks/useScrollLock";
+import { Eye, ArrowLeft, Plus, FolderOpen, Trash, X, FileText } from "@phosphor-icons/react";
 
 export default function DocumentsPage() {
   const { events, documents, isFreePlan, getProfile, getDepartment, getDocsByEvent, currentUser } = useMockData();
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [folderFilter, setFolderFilter] = useState("all");
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+
+  useScrollLock(!!selectedDoc);
 
   if (isFreePlan) {
     return (
@@ -19,6 +22,9 @@ export default function DocumentsPage() {
       </div>
     );
   }
+
+  // Document detail view
+  const doc = selectedDoc ? documents.find(d => d.id === selectedDoc) : null;
 
   // Event Folder Grid
   if (!selectedEvent) {
@@ -104,7 +110,7 @@ export default function DocumentsPage() {
               const uploader = getProfile(d.uploaded_by);
               const dept = d.dept_id ? getDepartment(d.dept_id) : null;
               return (
-                <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors">
+                <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer" onClick={() => setSelectedDoc(d.id)}>
                   <td className="px-4 py-3 font-medium">{d.name}</td>
                   <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{d.folder}</span></td>
                   <td className="px-4 py-3 text-muted-foreground">{dept?.name || "—"}</td>
@@ -112,8 +118,8 @@ export default function DocumentsPage() {
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(d.uploaded_at)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{d.file_size}</td>
                   <td className="px-4 py-3 flex items-center gap-2">
-                    <button className="text-muted-foreground hover:text-foreground transition-colors"><Eye size={15} /></button>
-                    {isAdmin && <button className="text-muted-foreground hover:text-red-600 transition-colors"><Trash size={15} /></button>}
+                    <button className="text-muted-foreground hover:text-foreground transition-colors" onClick={e => { e.stopPropagation(); setSelectedDoc(d.id); }}><Eye size={15} /></button>
+                    {isAdmin && <button className="text-muted-foreground hover:text-red-600 transition-colors" onClick={e => e.stopPropagation()}><Trash size={15} /></button>}
                   </td>
                 </tr>
               );
@@ -127,6 +133,46 @@ export default function DocumentsPage() {
           </div>
         )}
       </div>
+
+      {/* Document Detail Drawer */}
+      {doc && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedDoc(null)} />
+          <div className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">{doc.name}</h3>
+              <button onClick={() => setSelectedDoc(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+            </div>
+            <div className="flex items-center justify-center py-12 bg-secondary rounded-xl">
+              <FileText size={48} className="text-muted-foreground/30" />
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm border-t border-stroke pt-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Folder</p>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{doc.folder}</span>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Size</p>
+                <p>{doc.file_size}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Uploaded By</p>
+                {(() => { const u = getProfile(doc.uploaded_by); return u ? <div className="flex items-center gap-1.5"><UserAvatar name={u.name} color={u.avatar_color} size="sm" /><span>{u.name}</span></div> : null; })()}
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</p>
+                <p>{formatDate(doc.uploaded_at)}</p>
+              </div>
+              {doc.dept_id && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p>
+                  <p>{getDepartment(doc.dept_id)?.name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
