@@ -5,13 +5,14 @@ import { StatusBadge } from "@/components/StatusBadge";
 import {
   ChartBar, Hash, Plus, DotsThreeOutline, CaretDown, CaretRight,
   Funnel, Clock, Upload, User, ShieldCheck, UserPlus,
-  ListChecks, FolderOpen, CheckCircle, XCircle, HourglassSimple, Receipt
+  ListChecks, FolderOpen, CheckCircle, XCircle, HourglassSimple, Receipt, Buildings
 } from "@phosphor-icons/react";
 
-type MainTab = "home" | "task" | "billing" | "document" | "team";
+type MainTab = "home" | "task" | "dept" | "billing" | "document" | "team";
 
 function getMainTab(pathname: string): MainTab {
   if (pathname.startsWith("/tasks")) return "task";
+  if (pathname.startsWith("/departments")) return "dept";
   if (pathname.startsWith("/billing")) return "billing";
   if (pathname.startsWith("/documents")) return "document";
   if (pathname.startsWith("/teams")) return "team";
@@ -35,7 +36,6 @@ export function NavPanel() {
   const [showAllDepts, setShowAllDepts] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["events-task", "events-billing", "events-doc"]));
 
-  // Resizable width
   const STORAGE_KEY = "zh-nav-width";
   const MIN_W = 180;
   const DEFAULT_W = 220;
@@ -90,48 +90,31 @@ export function NavPanel() {
 
   return (
     <div id="zh-nav-panel" className="relative flex-shrink-0" style={{ width }}>
-      <aside
-        className="h-full overflow-y-auto bg-nav-panel"
-        style={{ width }}
-      >
+      <aside className="h-full overflow-y-auto bg-nav-panel" style={{ width }}>
         <div className="p-4 space-y-5">
           {/* ===== HOME TAB ===== */}
           {mainTab === "home" && (
             <>
               <div>
                 <p className={sectionLabelClass} style={sectionLabelColor}>HOME</p>
-                <NavLink
-                  to="/dashboard"
-                  className={({ isActive }) => isActive ? navItemActive : navItemInactive}
-                >
-                  <ChartBar size={15} />
-                  Dashboard
+                <NavLink to="/dashboard" className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
+                  <ChartBar size={15} /> Dashboard
                 </NavLink>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>EVENTS</p>
-                  <button className={iconBtnClass}>
-                    <Plus size={12} weight="bold" />
-                  </button>
+                  <button className={iconBtnClass}><Plus size={12} weight="bold" /></button>
                 </div>
                 <div className="space-y-0.5">
                   {visibleEvents.map(ev => {
                     const isSelected = selectedEventId === ev.id;
                     const initials = ev.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                     return (
-                      <NavLink
-                        key={ev.id}
-                        to={`/events/${ev.id}`}
-                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-                          isSelected ? "bg-selected text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"
-                        }`}
-                      >
-                        <div
-                          className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                          style={{ backgroundColor: ev.status === "active" ? "#e85d04" : ev.status === "planning" ? "#3b82f6" : "#9ca3af" }}
-                        >
+                      <NavLink key={ev.id} to={`/events/${ev.id}`}
+                        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isSelected ? "bg-selected text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
+                        <div className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: ev.status === "active" ? "#e85d04" : ev.status === "planning" ? "#3b82f6" : "#9ca3af" }}>
                           {initials}
                         </div>
                         <span className="truncate flex-1">{ev.name}</span>
@@ -140,40 +123,29 @@ export function NavPanel() {
                     );
                   })}
                   {events.length > 4 && (
-                    <button
-                      onClick={() => setShowAllEvents(!showAllEvents)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <button onClick={() => setShowAllEvents(!showAllEvents)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <DotsThreeOutline size={12} weight="fill" />
                       {showAllEvents ? "Show less" : "More"}
                     </button>
                   )}
                 </div>
               </div>
-
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>DEPARTMENTS</p>
-                  <button className={iconBtnClass}>
-                    <Plus size={12} weight="bold" />
-                  </button>
+                  <button className={iconBtnClass}><Plus size={12} weight="bold" /></button>
                 </div>
                 <div className="space-y-0.5">
                   {visibleDepts.map(dept => (
-                    <NavLink
-                      key={dept.id}
-                      to={`/events/${dept.event_id}?tab=departments`}
-                      className={navItemInactive}
-                    >
+                    <NavLink key={dept.id} to={`/departments/${encodeURIComponent(dept.name)}`} className={navItemInactive}>
                       <Hash size={13} className="shrink-0" />
                       <span className="truncate">{dept.name}</span>
                     </NavLink>
                   ))}
                   {depts.length > 8 && (
-                    <button
-                      onClick={() => setShowAllDepts(!showAllDepts)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
+                    <button onClick={() => setShowAllDepts(!showAllDepts)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <DotsThreeOutline size={12} weight="fill" />
                       {showAllDepts ? "Show less" : "More"}
                     </button>
@@ -189,18 +161,13 @@ export function NavPanel() {
               <div>
                 <p className={sectionLabelClass} style={sectionLabelColor}>TASKS</p>
                 <div className="space-y-0.5">
-                  <NavLink to="/tasks?view=my" className={navItemInactive}>
-                    <User size={14} /> My Tasks
-                  </NavLink>
-                  <NavLink to="/tasks" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
-                    <ListChecks size={14} /> All Tasks
-                  </NavLink>
+                  <NavLink to="/tasks?view=my" className={navItemInactive}><User size={14} /> My Tasks</NavLink>
+                  <NavLink to="/tasks" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}><ListChecks size={14} /> All Tasks</NavLink>
                 </div>
               </div>
               <div>
                 <button onClick={() => toggleSection("events-task")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
-                  {expandedSections.has("events-task") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  BY EVENT
+                  {expandedSections.has("events-task") ? <CaretDown size={10} /> : <CaretRight size={10} />} BY EVENT
                 </button>
                 {expandedSections.has("events-task") && (
                   <div className="space-y-0.5 pl-1">
@@ -215,12 +182,32 @@ export function NavPanel() {
               <div>
                 <p className={sectionLabelClass} style={sectionLabelColor}>FILTERS</p>
                 <div className="space-y-0.5">
-                  <button className={`${navItemInactive} w-full text-left`}>
-                    <Funnel size={14} /> Status
-                  </button>
-                  <button className={`${navItemInactive} w-full text-left`}>
-                    <Funnel size={14} /> Priority
-                  </button>
+                  <button className={`${navItemInactive} w-full text-left`}><Funnel size={14} /> Status</button>
+                  <button className={`${navItemInactive} w-full text-left`}><Funnel size={14} /> Priority</button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ===== DEPT TAB ===== */}
+          {mainTab === "dept" && (
+            <>
+              <div>
+                <p className={sectionLabelClass} style={sectionLabelColor}>DEPARTMENTS</p>
+                <div className="space-y-0.5">
+                  <NavLink to="/departments" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
+                    <Buildings size={14} /> All Departments
+                  </NavLink>
+                </div>
+              </div>
+              <div>
+                <p className={sectionLabelClass} style={sectionLabelColor}>BY NAME</p>
+                <div className="space-y-0.5">
+                  {uniqueDepts.map(name => (
+                    <NavLink key={name} to={`/departments/${encodeURIComponent(name)}`} className={navItemInactive}>
+                      <Hash size={13} /> <span className="truncate">{name}</span>
+                    </NavLink>
+                  ))}
                 </div>
               </div>
             </>
@@ -239,8 +226,7 @@ export function NavPanel() {
               </div>
               <div>
                 <button onClick={() => toggleSection("events-billing")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
-                  {expandedSections.has("events-billing") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  BY EVENT
+                  {expandedSections.has("events-billing") ? <CaretDown size={10} /> : <CaretRight size={10} />} BY EVENT
                 </button>
                 {expandedSections.has("events-billing") && (
                   <div className="space-y-0.5 pl-1">
@@ -253,15 +239,9 @@ export function NavPanel() {
                 )}
               </div>
               <div className="space-y-0.5">
-                <NavLink to="/billing?status=pending" className={navItemInactive}>
-                  <HourglassSimple size={14} /> Pending Approvals
-                </NavLink>
-                <NavLink to="/billing?status=settled" className={navItemInactive}>
-                  <CheckCircle size={14} /> Approved
-                </NavLink>
-                <NavLink to="/billing?status=rejected" className={navItemInactive}>
-                  <XCircle size={14} /> Rejected
-                </NavLink>
+                <NavLink to="/billing?status=pending" className={navItemInactive}><HourglassSimple size={14} /> Pending</NavLink>
+                <NavLink to="/billing?status=settled" className={navItemInactive}><CheckCircle size={14} /> Paid</NavLink>
+                <NavLink to="/billing?status=rejected" className={navItemInactive}><XCircle size={14} /> Rejected</NavLink>
               </div>
             </>
           )}
@@ -279,8 +259,7 @@ export function NavPanel() {
               </div>
               <div>
                 <button onClick={() => toggleSection("events-doc")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
-                  {expandedSections.has("events-doc") ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  BY EVENT
+                  {expandedSections.has("events-doc") ? <CaretDown size={10} /> : <CaretRight size={10} />} BY EVENT
                 </button>
                 {expandedSections.has("events-doc") && (
                   <div className="space-y-0.5 pl-1">
@@ -293,12 +272,8 @@ export function NavPanel() {
                 )}
               </div>
               <div className="space-y-0.5">
-                <NavLink to="/documents?view=recent" className={navItemInactive}>
-                  <Clock size={14} /> Recently Added
-                </NavLink>
-                <NavLink to="/documents?view=mine" className={navItemInactive}>
-                  <Upload size={14} /> My Uploads
-                </NavLink>
+                <NavLink to="/documents?view=recent" className={navItemInactive}><Clock size={14} /> Recently Added</NavLink>
+                <NavLink to="/documents?view=mine" className={navItemInactive}><Upload size={14} /> My Uploads</NavLink>
               </div>
             </>
           )}
@@ -325,20 +300,14 @@ export function NavPanel() {
                 </div>
               </div>
               <div>
-                <NavLink to="/teams?invite=true" className={navItemInactive}>
-                  <UserPlus size={14} /> Invite Members
-                </NavLink>
+                <NavLink to="/teams?invite=true" className={navItemInactive}><UserPlus size={14} /> Invite Members</NavLink>
               </div>
             </>
           )}
         </div>
       </aside>
-
-      {/* Resize handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-accent/30 transition-colors z-10 ${isResizing ? "bg-accent/40" : ""}`}
-      />
+      <div onMouseDown={handleMouseDown}
+        className={`absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-accent/30 transition-colors z-10 ${isResizing ? "bg-accent/40" : ""}`} />
     </div>
   );
 }
