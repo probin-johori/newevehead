@@ -16,11 +16,16 @@ const statusStyles: Record<string, string> = {
   low: "bg-gray-100 text-gray-600",
   "not-started": "bg-gray-100 text-gray-600",
   "in-progress": "bg-blue-50 text-blue-700",
+  "in-review": "bg-purple-50 text-purple-700",
+  backlog: "bg-gray-50 text-gray-500",
   blocked: "bg-orange-50 text-orange-700",
   pending: "bg-amber-50 text-amber-700",
   "dept-verified": "bg-blue-50 text-blue-700",
   "ca-approved": "bg-emerald-50 text-emerald-700",
   settled: "bg-emerald-50 text-emerald-700",
+  paid: "bg-emerald-50 text-emerald-700",
+  overdue: "bg-red-50 text-red-700",
+  "on-hold": "bg-gray-100 text-gray-600",
   rejected: "bg-red-50 text-red-700",
   "not-given": "bg-gray-100 text-gray-600",
   "advance-given": "bg-blue-50 text-blue-700",
@@ -29,10 +34,12 @@ const statusStyles: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   "not-started": "Not Started",
   "in-progress": "In Progress",
+  "in-review": "In Review",
   "dept-verified": "Dept Verified",
   "ca-approved": "CA Approved",
   "not-given": "Not Given",
   "advance-given": "Advance Given",
+  "on-hold": "On Hold",
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

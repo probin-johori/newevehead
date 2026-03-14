@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { House, ListChecks, Receipt, FileText, UsersThree, GearSix } from "@phosphor-icons/react";
+import { House, ListChecks, Buildings, Receipt, FileText, UsersThree, GearSix } from "@phosphor-icons/react";
 
 const navItems = [
   { to: "/dashboard", icon: House, label: "Home" },
   { to: "/tasks", icon: ListChecks, label: "Tasks" },
+  { to: "/departments", icon: Buildings, label: "Depts" },
   { to: "/billing", icon: Receipt, label: "Billing" },
   { to: "/documents", icon: FileText, label: "Docs" },
   { to: "/teams", icon: UsersThree, label: "Teams" },
@@ -20,11 +21,6 @@ export function AppSidebar() {
   return (
     <aside className="flex w-[70px] flex-col items-center shrink-0">
       <div className="flex h-full w-full flex-col items-center bg-sidebar py-3 rounded-xl">
-        {/* Logo */}
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-rose-500 text-[11px] font-bold text-white mb-4">
-          ZH
-        </div>
-
         <nav className="flex flex-1 flex-col items-center gap-0.5">
           {navItems.map((item) => {
             const active = isActive(item.to);

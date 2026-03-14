@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useCallback, ReactNode } from "rea
 export type Role = "sa" | "org" | "dept_head" | "dept_member";
 export type Plan = "free" | "pro" | "business";
 export type EventStatus = "planning" | "active" | "completed" | "archived";
-export type TaskStatus = "not-started" | "in-progress" | "blocked" | "completed";
+export type TaskStatus = "not-started" | "in-progress" | "blocked" | "completed" | "backlog" | "in-review";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 export type BillStatus = "pending" | "dept-verified" | "ca-approved" | "settled" | "rejected";
 export type AdvanceStatus = "not-given" | "advance-given" | "settled";
@@ -39,6 +39,7 @@ export interface Event {
   status: EventStatus;
   poc_id: string;
   created_by: string;
+  image_url?: string;
 }
 
 export interface Department {
@@ -70,6 +71,7 @@ export interface Task {
   subtasks: SubTask[];
   created_by: string;
   created_at: string;
+  labels?: string[];
 }
 
 export interface TaskComment {
@@ -100,6 +102,9 @@ export interface Bill {
   dept_verified_at: string | null;
   ca_approved_at: string | null;
   settled_at: string | null;
+  category?: string;
+  due_date?: string;
+  paid_date?: string;
 }
 
 export interface Document {
@@ -121,6 +126,8 @@ export interface Activity {
   description: string;
   link_text?: string;
   created_at: string;
+  type?: "comment" | "reply" | "mention" | "edit" | "assign" | "deadline" | "status" | "billing" | "upload";
+  target?: string;
 }
 
 export interface Notification {
@@ -140,7 +147,30 @@ export interface DeptHealth {
   budgetPct: number;
 }
 
+export interface Organisation {
+  id: string;
+  name: string;
+  logo?: string;
+  active: boolean;
+}
+
 export const formatINR = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
+
+export const formatINRShort = (amount: number): string => {
+  if (amount >= 10000000) {
+    const cr = amount / 10000000;
+    return `₹${cr % 1 === 0 ? cr.toFixed(0) : cr.toFixed(1)}Cr`;
+  }
+  if (amount >= 100000) {
+    const l = amount / 100000;
+    return `₹${l % 1 === 0 ? l.toFixed(0) : l.toFixed(1)}L`;
+  }
+  if (amount >= 1000) {
+    const k = amount / 1000;
+    return `₹${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`;
+  }
+  return `₹${amount}`;
+};
 
 export const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -157,12 +187,14 @@ export const formatDate = (dateStr: string) => {
 
 export const formatTimeAgo = (dateStr: string) => {
   const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (hours < 1) return "Just now";
-  if (hours < 24) return `${hours} hours ago`;
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
   if (days === 1) return "Yesterday";
-  return `${days} days ago`;
+  return `${days}d ago`;
 };
 
 // --- SEED DATA ---
@@ -179,6 +211,12 @@ const profiles: Profile[] = [
 const subscription: Subscription = {
   id: "sub1", org_id: "u7", plan: "pro", slots_total: 4, slots_used: 4,
 };
+
+const organisations: Organisation[] = [
+  { id: "org1", name: "Zero Hour Events", active: true },
+  { id: "org2", name: "Stellar Productions", active: false },
+  { id: "org3", name: "Moonlight Creatives", active: false },
+];
 
 const events: Event[] = [
   { id: "e1", name: "Diwali Grand Gala", location: "NSCI, Mumbai", start_date: "2026-03-15", end_date: "2026-03-17", setup_date: "2026-03-13", teardown_date: "2026-03-18", estimated_budget: 2500000, status: "active", poc_id: "u5", created_by: "u7" },
@@ -202,6 +240,7 @@ const tasks: Task[] = [
   {
     id: "t1", event_id: "e1", dept_id: "d1", title: "Install front truss rig", description: "Set up the front truss rigging system for main stage lighting and speaker mounts.",
     assignee_id: "u1", deadline: "2026-03-01", priority: "high", status: "in-progress", created_by: "u7", created_at: "2026-02-15T10:00:00Z",
+    labels: ["stage", "setup"],
     subtasks: [
       { id: "st1", title: "Source truss hardware from vendor", completed: true },
       { id: "st2", title: "Transport truss to venue", completed: true },
@@ -213,6 +252,7 @@ const tasks: Task[] = [
   {
     id: "t2", event_id: "e1", dept_id: "d1", title: "Main stage sound check", description: "Full sound check of all speaker arrays, monitors, and microphone lines.",
     assignee_id: "u2", deadline: "2026-03-01", priority: "urgent", status: "not-started", created_by: "u7", created_at: "2026-02-16T10:00:00Z",
+    labels: ["sound"],
     subtasks: [
       { id: "st6", title: "Test main PA system", completed: false },
       { id: "st7", title: "Test monitor wedges on stage", completed: false },
@@ -224,6 +264,7 @@ const tasks: Task[] = [
   {
     id: "t3", event_id: "e1", dept_id: "d3", title: "Finalise menu with Chef Kumar", description: "Confirm final menu selections, dietary options, and presentation style.",
     assignee_id: "u3", deadline: "2026-11-05", priority: "normal", status: "in-progress", created_by: "u7", created_at: "2026-02-14T10:00:00Z",
+    labels: ["catering"],
     subtasks: [
       { id: "st11", title: "Review menu options", completed: true },
       { id: "st12", title: "Tasting session", completed: true },
@@ -235,6 +276,7 @@ const tasks: Task[] = [
   {
     id: "t4", event_id: "e1", dept_id: "d3", title: "Crockery rental arrangement", description: "Arrange rental of crockery, cutlery, and glassware for 500 guests.",
     assignee_id: "u4", deadline: "2025-09-25", priority: "high", status: "blocked", created_by: "u7", created_at: "2026-02-10T10:00:00Z",
+    labels: ["logistics"],
     subtasks: [
       { id: "st16", title: "Get quotes from 3 vendors", completed: true },
       { id: "st17", title: "Select vendor and negotiate", completed: true },
@@ -246,6 +288,7 @@ const tasks: Task[] = [
   {
     id: "t5", event_id: "e1", dept_id: "d6", title: "Guest registration setup", description: "Set up registration desks, badge printing, and guest check-in flow.",
     assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "not-started", created_by: "u7", created_at: "2026-02-12T10:00:00Z",
+    labels: ["hospitality"],
     subtasks: [
       { id: "st21", title: "Design registration badges", completed: false },
       { id: "st22", title: "Set up check-in tablets", completed: false },
@@ -256,12 +299,33 @@ const tasks: Task[] = [
   },
   {
     id: "t6", event_id: "e1", dept_id: "d6", title: "VIP lounge preparation", description: "Prepare the VIP lounge area with refreshments, seating, and branding.",
-    assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "not-started", created_by: "u7", created_at: "2026-02-13T10:00:00Z",
+    assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "backlog", created_by: "u7", created_at: "2026-02-13T10:00:00Z",
+    labels: ["VIP"],
     subtasks: [
       { id: "st26", title: "Arrange premium seating", completed: false },
       { id: "st27", title: "Order VIP refreshments", completed: false },
       { id: "st28", title: "Set up VIP signage", completed: false },
       { id: "st29", title: "Coordinate VIP hostesses", completed: false },
+    ],
+  },
+  {
+    id: "t7", event_id: "e1", dept_id: "d2", title: "LED panel configuration", description: "Configure all LED panels for the main stage backdrop.",
+    assignee_id: "u2", deadline: "2026-03-12", priority: "normal", status: "in-review", created_by: "u7", created_at: "2026-02-20T10:00:00Z",
+    labels: ["lighting"],
+    subtasks: [
+      { id: "st30", title: "Map LED panels to content server", completed: true },
+      { id: "st31", title: "Test color calibration", completed: true },
+      { id: "st32", title: "Run full show sequence", completed: false },
+    ],
+  },
+  {
+    id: "t8", event_id: "e1", dept_id: "d7", title: "WiFi network deployment", description: "Deploy WiFi access points across the venue for staff and guests.",
+    assignee_id: "u6", deadline: "2026-03-13", priority: "normal", status: "completed", created_by: "u7", created_at: "2026-02-18T10:00:00Z",
+    labels: ["IT"],
+    subtasks: [
+      { id: "st33", title: "Survey venue for AP placement", completed: true },
+      { id: "st34", title: "Install access points", completed: true },
+      { id: "st35", title: "Configure network security", completed: true },
     ],
   },
 ];
@@ -271,36 +335,50 @@ const taskComments: TaskComment[] = [
   { id: "tc2", task_id: "t1", author_id: "u7", body: "Great. Make sure we have insurance cover for the transport.", created_at: "2026-02-19T09:30:00Z" },
   { id: "tc3", task_id: "t4", author_id: "u4", body: "Vendor is asking for advance payment. Waiting on budget approval.", created_at: "2026-02-19T10:00:00Z" },
   { id: "tc4", task_id: "t4", author_id: "u6", body: "Budget approved. Please proceed with the advance.", created_at: "2026-02-19T15:00:00Z" },
+  { id: "tc5", task_id: "t3", author_id: "u3", body: "Chef Kumar confirmed 320 pax for main course. Vegetarian options added.", created_at: "2026-02-20T11:00:00Z" },
+  { id: "tc6", task_id: "t7", author_id: "u2", body: "Color calibration complete. Running final sequence tomorrow.", created_at: "2026-02-22T16:00:00Z" },
 ];
 
 const bills: Bill[] = [
   {
     id: "b1", event_id: "e1", dept_id: "d2", vendor_name: "AV Rentals India", description: "LED panel rental and AV equipment for main stage",
     amount: 95000, advance_amount: 40000, bill_file_url: "av_rentals_inv_001.pdf", invoice_number: "AVR-2026-001",
-    status: "dept-verified", advance_status: "advance-given",
+    status: "dept-verified", advance_status: "advance-given", category: "Equipment",
     submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-20T10:00:00Z", dept_verified_at: "2026-02-21T14:00:00Z", ca_approved_at: null, settled_at: null,
+    due_date: "2026-03-10",
   },
   {
     id: "b2", event_id: "e1", dept_id: "d3", vendor_name: "Chef Kumar Catering", description: "Advance for catering supplies and raw materials",
     amount: 520000, advance_amount: 200000, bill_file_url: "chef_kumar_inv_045.pdf", invoice_number: "CKC-2026-045",
-    status: "pending", advance_status: "advance-given",
+    status: "pending", advance_status: "advance-given", category: "Catering",
     submitted_by: "u3", dept_verified_by: null, ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-25T09:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
+    due_date: "2026-03-05",
   },
   {
     id: "b3", event_id: "e1", dept_id: "d2", vendor_name: "LightMasters Pvt Ltd", description: "Complete lighting setup and ambient design for venue",
     amount: 280000, advance_amount: 100000, bill_file_url: "lightmasters_inv_112.pdf", invoice_number: "LM-2026-112",
-    status: "settled", advance_status: "settled",
+    status: "settled", advance_status: "settled", category: "Lighting",
     submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: "u6", settled_by: "u7",
     submitted_at: "2026-02-10T11:00:00Z", dept_verified_at: "2026-02-11T10:00:00Z", ca_approved_at: "2026-02-12T09:00:00Z", settled_at: "2026-02-13T09:00:00Z",
+    due_date: "2026-02-15", paid_date: "2026-02-13",
   },
   {
     id: "b4", event_id: "e1", dept_id: "d1", vendor_name: "ProSound Systems", description: "Sound system rental for main stage and breakout rooms",
     amount: 380000, advance_amount: 150000, bill_file_url: "prosound_inv_089.pdf", invoice_number: "PSS-2026-089",
-    status: "pending", advance_status: "advance-given",
+    status: "pending", advance_status: "advance-given", category: "Equipment",
     submitted_by: "u2", dept_verified_by: null, ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-26T10:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
+    due_date: "2026-03-12",
+  },
+  {
+    id: "b5", event_id: "e1", dept_id: "d4", vendor_name: "TransLogix India", description: "Transport vehicles for equipment and staff shuttle",
+    amount: 45000, advance_amount: 15000, bill_file_url: "translogix_inv_033.pdf", invoice_number: "TLI-2026-033",
+    status: "ca-approved", advance_status: "advance-given", category: "Transport",
+    submitted_by: "u4", dept_verified_by: "u4", ca_approved_by: "u6", settled_by: null,
+    submitted_at: "2026-02-22T10:00:00Z", dept_verified_at: "2026-02-23T10:00:00Z", ca_approved_at: "2026-02-24T10:00:00Z", settled_at: null,
+    due_date: "2026-03-01",
   },
 ];
 
@@ -312,11 +390,16 @@ const documents: Document[] = [
 ];
 
 const activities: Activity[] = [
-  { id: "a1", event_id: "e1", user_id: "u1", description: "submitted a reimbursement to [Diwali Grand Gala] — AV Rentals India · ₹95,000", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: "a2", event_id: "e1", user_id: "u2", description: "marked task complete in [Diwali Grand Gala] — \"LED panels sourced, 120 units ready\"", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 5 * 3600000).toISOString() },
-  { id: "a3", event_id: "e1", user_id: "u3", description: "uploaded a document in [Diwali Grand Gala] — Truss Layout v3.pdf (Stage & AV dept)", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: "a4", event_id: "e1", user_id: "u5", description: "changed event status from Planning to Active in [Diwali Grand Gala]", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 3 * 24 * 3600000).toISOString() },
-  { id: "a5", event_id: "e1", user_id: "u6", description: "allocated budget to Catering dept — ₹6,00,000", link_text: "Diwali Grand Gala", created_at: new Date(Date.now() - 4 * 24 * 3600000).toISOString() },
+  { id: "a1", event_id: "e1", user_id: "u1", type: "billing", description: "submitted a reimbursement to AV Rentals India · ₹95K", target: "AV Rentals India", created_at: new Date(Date.now() - 1 * 3600000).toISOString() },
+  { id: "a2", event_id: "e1", user_id: "u2", type: "comment", description: "added a comment on Stage Wiring task", target: "Stage Wiring", created_at: new Date(Date.now() - 2 * 3600000).toISOString() },
+  { id: "a3", event_id: "e1", user_id: "u1", type: "reply", description: "replied to Priya's comment", target: "Lighting Setup", created_at: new Date(Date.now() - 3 * 3600000).toISOString() },
+  { id: "a4", event_id: "e1", user_id: "u3", type: "status", description: "updated the catering headcount to 320", created_at: new Date(Date.now() - 5 * 3600000).toISOString() },
+  { id: "a5", event_id: "e1", user_id: "u5", type: "mention", description: "was mentioned in Lighting Setup thread", target: "@Rohit Sharma", created_at: new Date(Date.now() - 8 * 3600000).toISOString() },
+  { id: "a6", event_id: "e1", user_id: "u2", type: "status", description: "marked LED Panel Configuration as complete", target: "LED Panel Configuration", created_at: new Date(Date.now() - 12 * 3600000).toISOString() },
+  { id: "a7", event_id: "e1", user_id: "u7", type: "assign", description: "assigned Guest Registration to Priya Sharma", target: "Guest Registration", created_at: new Date(Date.now() - 24 * 3600000).toISOString() },
+  { id: "a8", event_id: "e1", user_id: "u4", type: "edit", description: "edited their comment on Crockery Rental", target: "Crockery Rental", created_at: new Date(Date.now() - 28 * 3600000).toISOString() },
+  { id: "a9", event_id: "e1", user_id: "u6", type: "deadline", description: "changed deadline on Sound Check from Dec 3 to Dec 5", target: "Sound Check", created_at: new Date(Date.now() - 48 * 3600000).toISOString() },
+  { id: "a10", event_id: "e1", user_id: "u1", type: "upload", description: "uploaded Truss Layout v3.pdf to Stage & AV dept", target: "Truss Layout v3.pdf", created_at: new Date(Date.now() - 72 * 3600000).toISOString() },
 ];
 
 const deptHealthData: DeptHealth[] = [
@@ -331,9 +414,15 @@ const deptHealthData: DeptHealth[] = [
 ];
 
 const notifications: Notification[] = [
-  { id: "n1", user_id: "u7", body: "Aarav Singh submitted a bill for AV Rentals India (₹95,000)", type: "bill_submitted", read: false, created_at: "2026-02-28T10:05:00Z", link_to: "/billing" },
-  { id: "n2", user_id: "u7", body: "AV Rentals India bill verified by Dept Head Kavya Nair", type: "bill_verified", read: false, created_at: "2026-02-27T14:05:00Z", link_to: "/billing" },
-  { id: "n3", user_id: "u7", body: "Task 'Crockery rental arrangement' is overdue", type: "task_overdue", read: false, created_at: "2026-02-26T08:00:00Z", link_to: "/tasks" },
+  { id: "n1", user_id: "u7", body: "Aarav Singh submitted a bill for AV Rentals India (₹95K)", type: "billing", read: false, created_at: new Date(Date.now() - 1 * 3600000).toISOString(), link_to: "/billing" },
+  { id: "n2", user_id: "u7", body: "Kavya Nair added a comment on LED Panel Configuration", type: "comment", read: false, created_at: new Date(Date.now() - 3 * 3600000).toISOString(), link_to: "/tasks?task=t7" },
+  { id: "n3", user_id: "u7", body: "Task 'Crockery rental arrangement' is overdue", type: "task_overdue", read: false, created_at: new Date(Date.now() - 8 * 3600000).toISOString(), link_to: "/tasks?task=t4" },
+  { id: "n4", user_id: "u7", body: "Priya Sharma mentioned you in Guest Registration thread", type: "mention", read: true, created_at: new Date(Date.now() - 24 * 3600000).toISOString(), link_to: "/tasks?task=t5" },
+  { id: "n5", user_id: "u7", body: "Budget for Catering dept has been updated to ₹6L", type: "billing", read: true, created_at: new Date(Date.now() - 48 * 3600000).toISOString(), link_to: "/events/e1?tab=budget" },
+  { id: "n6", user_id: "u7", body: "Rohan Das completed 'Finalize menu options'", type: "task_completed", read: true, created_at: new Date(Date.now() - 72 * 3600000).toISOString(), link_to: "/tasks?task=t3" },
+  { id: "n7", user_id: "u7", body: "New document uploaded: Fire Safety Permit.pdf", type: "document", read: true, created_at: new Date(Date.now() - 96 * 3600000).toISOString(), link_to: "/documents" },
+  { id: "n8", user_id: "u7", body: "LightMasters bill marked as Settled", type: "billing", read: true, created_at: new Date(Date.now() - 120 * 3600000).toISOString(), link_to: "/billing" },
+  { id: "n9", user_id: "u7", body: "Sana Kapoor joined the team as Dept Member", type: "team", read: true, created_at: new Date(Date.now() - 168 * 3600000).toISOString(), link_to: "/teams" },
 ];
 
 interface MockDataContextType {
@@ -346,6 +435,7 @@ interface MockDataContextType {
   profiles: Profile[];
   subscription: Subscription;
   events: Event[];
+  setEvents: (e: Event[]) => void;
   departments: Department[];
   tasks: Task[];
   taskComments: TaskComment[];
@@ -354,6 +444,7 @@ interface MockDataContextType {
   activities: Activity[];
   deptHealth: DeptHealth[];
   notifications: Notification[];
+  organisations: Organisation[];
   setNotifications: (n: Notification[]) => void;
   setTasks: (t: Task[]) => void;
   setBills: (b: Bill[]) => void;
@@ -379,13 +470,14 @@ interface MockDataContextType {
 const MockDataContext = createContext<MockDataContextType | null>(null);
 
 export function MockDataProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<Profile>(profiles[6]); // Sumit Patel
+  const [currentUser, setCurrentUser] = useState<Profile>(profiles[6]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [hasSelectedRole, setHasSelectedRole] = useState(true);
   const [notifs, setNotifications] = useState(notifications);
   const [taskList, setTasks] = useState(tasks);
   const [commentList, setTaskComments] = useState(taskComments);
   const [billList, setBills] = useState(bills);
+  const [eventList, setEvents] = useState(events);
 
   const login = useCallback((email: string, _password: string) => {
     const found = profiles.find(p => p.email === email);
@@ -410,7 +502,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getProfile = (id: string) => profiles.find(p => p.id === id);
-  const getEvent = (id: string) => events.find(e => e.id === id);
+  const getEvent = (id: string) => eventList.find(e => e.id === id);
   const getDepartment = (id: string) => departments.find(d => d.id === id);
   const getDeptsByEvent = (eventId: string) => departments.filter(d => d.event_id === eventId);
   const getTasksByEvent = (eventId: string) => taskList.filter(t => t.event_id === eventId);
@@ -425,8 +517,9 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     <MockDataContext.Provider value={{
       currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated,
       hasSelectedRole, setHasSelectedRole,
-      profiles, subscription, events, departments,
+      profiles, subscription, events: eventList, setEvents, departments,
       tasks: taskList, taskComments: commentList, bills: billList, documents, activities, deptHealth: deptHealthData, notifications: notifs,
+      organisations,
       setNotifications, setTasks, setBills, setTaskComments,
       login, signup, logout, selectRole,
       getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
