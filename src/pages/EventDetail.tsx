@@ -1,9 +1,10 @@
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMockData, formatINR, formatDate, formatTimeAgo } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ProgressBar } from "@/components/ProgressBar";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import {
   CaretDown, CaretUp, ArrowBendDownRight, CheckSquare, Square,
   Flag, Plus, Eye, FileText, DotsThreeOutline, X, Check, PencilSimple
@@ -25,7 +26,7 @@ export default function EventDetailPage() {
   const {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
-    currentUser, bills, tasks: allTasks
+    currentUser, bills, events, tasks: allTasks
   } = useMockData();
 
   const initialTab = (searchParams.get("tab") as Tab) || "overview";
@@ -33,7 +34,28 @@ export default function EventDetailPage() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set(["t1"]));
   const [selectedBill, setSelectedBill] = useState<string | null>(null);
 
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editBudget, setEditBudget] = useState("");
+
   const event = getEvent(id!);
+
+  useEffect(() => {
+    if (event) {
+      setEditName(event.name);
+      setEditLocation(event.location);
+      setEditStartDate(event.start_date);
+      setEditEndDate(event.end_date);
+      setEditBudget(String(event.estimated_budget));
+    }
+  }, [event?.id]);
+
+  useScrollLock(!!selectedBill);
+
   if (!event) return <div className="p-8 text-sm text-muted-foreground">Event not found</div>;
 
   const depts = getDeptsByEvent(event.id);
@@ -73,10 +95,26 @@ export default function EventDetailPage() {
   }).length;
   const overdueCount = evTasks.filter(t => t.status !== "completed" && new Date(t.deadline) < new Date()).length;
 
-  // Budget calculations
   const totalAllocated = depts.reduce((s, d) => s + d.allocated_budget, 0);
   const totalSpent = depts.reduce((s, d) => s + d.spent, 0);
   const budgetRemaining = event.estimated_budget - totalSpent;
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel
+      setEditName(event.name);
+      setEditLocation(event.location);
+      setEditStartDate(event.start_date);
+      setEditEndDate(event.end_date);
+      setEditBudget(String(event.estimated_budget));
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSave = () => {
+    // In a real app, this would persist. For now just exit edit mode.
+    setIsEditing(false);
+  };
 
   return (
     <div className="p-6 w-full">
@@ -86,13 +124,56 @@ export default function EventDetailPage() {
           🎆
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-foreground">{event.name}</h1>
-            <StatusBadge status={event.status} />
-            <button className="ml-2 flex h-6 w-6 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
-              <PencilSimple size={13} />
-            </button>
-          </div>
+          {isEditing ? (
+            <div className="space-y-2">
+              <input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                className="text-xl font-semibold bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-full max-w-md focus:outline-none"
+              />
+              <div className="flex gap-3 flex-wrap">
+                <div>
+                  <label className="text-[11px] text-muted-foreground font-medium">Location</label>
+                  <input value={editLocation} onChange={e => setEditLocation(e.target.value)}
+                    className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-[200px] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground font-medium">Start Date</label>
+                  <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)}
+                    className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground font-medium">End Date</label>
+                  <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)}
+                    className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground font-medium">Est. Budget (₹)</label>
+                  <input type="number" value={editBudget} onChange={e => setEditBudget(e.target.value)}
+                    className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-[160px] focus:outline-none" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={handleSave} className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+                  Save
+                </button>
+                <button onClick={handleEditToggle} className="rounded-full bg-secondary px-4 py-1.5 text-sm font-medium hover:bg-selected transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold text-foreground">{event.name}</h1>
+              <StatusBadge status={event.status} />
+              <button
+                onClick={() => setIsEditing(true)}
+                className="ml-2 flex h-6 w-6 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors"
+              >
+                <PencilSimple size={13} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -145,7 +226,6 @@ export default function EventDetailPage() {
                     <Plus size={12} /> Add Task
                   </button>
                 </div>
-                {/* Table header */}
                 <div className="grid grid-cols-[1fr_80px_70px_80px] gap-2 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-stroke">
                   <span>Tasks</span>
                   <span>Assignee</span>
@@ -161,7 +241,7 @@ export default function EventDetailPage() {
                     const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
                     const pc = priorityConfig[t.priority] || priorityConfig.normal;
                     return (
-                      <div key={t.id} className="px-4 py-2.5 hover:bg-selected transition-colors">
+                      <div key={t.id} className="px-4 py-2.5 hover:bg-selected transition-colors cursor-pointer" onClick={() => navigate(`/tasks?task=${t.id}`)}>
                         <div className="grid grid-cols-[1fr_80px_70px_80px] gap-2 items-center">
                           <div className="flex items-center gap-2 min-w-0">
                             {allDone ? (
@@ -170,7 +250,14 @@ export default function EventDetailPage() {
                               <Square size={16} className="text-muted-foreground shrink-0" />
                             )}
                             <div className="min-w-0">
-                              <span className={`text-sm ${allDone ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-sm ${allDone ? "line-through text-muted-foreground" : "text-foreground"}`}>{t.title}</span>
+                                {t.subtasks.length > 0 && (
+                                  <span className="text-[10px] text-muted-foreground bg-secondary rounded px-1 py-0.5">
+                                    {doneCount}/{t.subtasks.length}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-[11px] text-muted-foreground">{dept?.name}</p>
                             </div>
                           </div>
@@ -224,11 +311,6 @@ export default function EventDetailPage() {
                   })}
                 </div>
               </div>
-
-              {/* Placeholder */}
-              <div className="rounded-xl border border-stroke p-8 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">Placeholder</p>
-              </div>
             </div>
 
             {/* Right: Department Health */}
@@ -236,12 +318,7 @@ export default function EventDetailPage() {
               <div className="rounded-xl border border-stroke p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold">Department Health</h3>
-                  <select className="text-xs text-muted-foreground bg-transparent border-none focus:outline-none">
-                    <option>All</option>
-                  </select>
                 </div>
-
-                {/* Task count */}
                 <div className="mb-4">
                   <p className="text-xs text-muted-foreground">Tasks</p>
                   <p className="text-xl font-semibold tabular-nums">{doneTasks}/{totalTasks}</p>
@@ -253,7 +330,6 @@ export default function EventDetailPage() {
                     {overdueCount > 0 && <span className="text-[11px] font-medium text-red-700 bg-red-50 rounded-full px-2 py-0.5">{overdueCount} overdue</span>}
                   </div>
                 </div>
-
                 <div className="border-t border-stroke pt-4 mb-4">
                   <p className="text-xs text-muted-foreground">Budget</p>
                   <div className="flex items-center justify-between">
@@ -261,8 +337,6 @@ export default function EventDetailPage() {
                     <p className="text-xs text-muted-foreground tabular-nums">{formatINR(budgetRemaining)} left</p>
                   </div>
                 </div>
-
-                {/* Donut-style remaining indicator */}
                 <div className="flex items-center justify-center py-4">
                   <div className="relative h-28 w-28">
                     <svg viewBox="0 0 36 36" className="h-28 w-28 -rotate-90">
@@ -277,8 +351,6 @@ export default function EventDetailPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Per-dept budget rows */}
                 <div className="border-t border-stroke pt-3 space-y-2">
                   {depts.slice(0, 4).map(d => {
                     const pct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
@@ -310,7 +382,7 @@ export default function EventDetailPage() {
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                 </tr>
@@ -326,9 +398,8 @@ export default function EventDetailPage() {
                   const pc = priorityConfig[t.priority] || priorityConfig.normal;
 
                   return (
-                    <>
+                    <tbody key={t.id}>
                       <tr
-                        key={t.id}
                         className="border-b border-stroke hover:bg-selected cursor-pointer transition-colors"
                         onClick={() => toggleTask(t.id)}
                       >
@@ -374,7 +445,7 @@ export default function EventDetailPage() {
                           </td>
                         </tr>
                       ))}
-                    </>
+                    </tbody>
                   );
                 })}
               </tbody>
@@ -473,7 +544,6 @@ export default function EventDetailPage() {
                     </div>
                     <p className="text-xl font-semibold tabular-nums">{formatINR(b.amount)}</p>
                   </div>
-                  {/* Approve/Reject actions */}
                   {(b.status === "pending" || b.status === "dept-verified") && (
                     <div className="flex gap-2 mt-4 pt-3 border-t border-stroke">
                       <button className="rounded-full bg-emerald-600 text-white px-3.5 py-1.5 text-xs font-medium hover:bg-emerald-700 transition-colors" onClick={e => e.stopPropagation()}>
@@ -504,6 +574,7 @@ export default function EventDetailPage() {
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Amount</p><p className="font-semibold text-lg">{formatINR(bill.amount)}</p></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Advance</p><p className="font-semibold text-lg">{formatINR(bill.advance_amount)}</p></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</p><StatusBadge status={bill.status} /></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p><button onClick={() => { setSelectedBill(null); navigate(`/events/${bill.event_id}`); }} className="text-sm hover:text-accent">{getEvent(bill.event_id)?.name}</button></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name}</p></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Invoice</p><p>{bill.invoice_number}</p></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted</p><p>{new Date(bill.submitted_at).toLocaleDateString()}</p></div>

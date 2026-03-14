@@ -1,16 +1,28 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMockData, formatINR } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
-import { FileText, CaretRight, X, Plus, Check } from "@phosphor-icons/react";
+import { useScrollLock } from "@/hooks/useScrollLock";
+import { FileText, X, Plus, Check } from "@phosphor-icons/react";
+import { toast } from "@/hooks/use-toast";
 
 export default function BillingPage() {
-  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan } = useMockData();
+  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills } = useMockData();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [eventFilter, setEventFilter] = useState("all");
+  const [searchParams] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+  const [eventFilter, setEventFilter] = useState(searchParams.get("event") || "all");
   const [selectedBill, setSelectedBill] = useState<string | null>(null);
+
+  useScrollLock(!!selectedBill);
+
+  useEffect(() => {
+    const s = searchParams.get("status");
+    const e = searchParams.get("event");
+    if (s) setStatusFilter(s);
+    if (e) setEventFilter(e);
+  }, [searchParams]);
 
   if (isFreePlan) {
     return (
@@ -34,6 +46,18 @@ export default function BillingPage() {
   const advanceTotal = bills.reduce((s, b) => s + b.advance_amount, 0);
 
   const bill = selectedBill ? bills.find(b => b.id === selectedBill) : null;
+
+  const handleApprove = (billId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString() } : b));
+    toast({ title: "Bill approved", description: "Status updated to Settled" });
+  };
+
+  const handleReject = (billId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBills(bills.map(b => b.id === billId ? { ...b, status: "rejected" as const } : b));
+    toast({ title: "Bill rejected", description: "Status updated to Rejected" });
+  };
 
   return (
     <div className="p-6 w-full">
@@ -82,14 +106,18 @@ export default function BillingPage() {
         {filtered.map(b => {
           const dept = getDepartment(b.dept_id);
           const ev = getEvent(b.event_id);
-          const submitter = getProfile(b.submitted_by);
           return (
             <div key={b.id} onClick={() => setSelectedBill(b.id)} className="rounded-xl border border-stroke p-5 hover:bg-selected/50 transition-colors cursor-pointer">
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <h4 className="font-semibold">{b.vendor_name}</h4>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{ev?.name}</span>
+                    <button
+                      className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium hover:bg-selected transition-colors"
+                      onClick={e => { e.stopPropagation(); navigate(`/events/${b.event_id}`); }}
+                    >
+                      {ev?.name}
+                    </button>
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{dept?.name}</span>
                     <StatusBadge status={b.status} />
                   </div>
@@ -99,10 +127,10 @@ export default function BillingPage() {
               {/* Approve/Reject */}
               {(b.status === "pending" || b.status === "dept-verified") && (currentUser.role === "sa" || currentUser.role === "dept_head") && (
                 <div className="flex gap-2 pt-3 border-t border-stroke">
-                  <button className="rounded-full bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 transition-colors" onClick={e => e.stopPropagation()}>
+                  <button className="rounded-full bg-emerald-600 text-white px-3 py-1.5 text-xs font-medium hover:bg-emerald-700 transition-colors" onClick={e => handleApprove(b.id, e)}>
                     <Check size={12} weight="bold" className="inline mr-1" />Approve
                   </button>
-                  <button className="rounded-full bg-red-50 text-red-600 px-3 py-1.5 text-xs font-medium hover:bg-red-100 transition-colors" onClick={e => e.stopPropagation()}>
+                  <button className="rounded-full bg-red-50 text-red-600 px-3 py-1.5 text-xs font-medium hover:bg-red-100 transition-colors" onClick={e => handleReject(b.id, e)}>
                     <X size={12} weight="bold" className="inline mr-1" />Reject
                   </button>
                 </div>
