@@ -56,6 +56,9 @@ export interface SubTask {
   id: string;
   title: string;
   completed: boolean;
+  assignee_id?: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
 }
 
 export interface Task {
@@ -82,6 +85,16 @@ export interface TaskComment {
   created_at: string;
 }
 
+export interface BillEditLog {
+  id: string;
+  bill_id: string;
+  user_id: string;
+  field: string;
+  old_value: string;
+  new_value: string;
+  created_at: string;
+}
+
 export interface Bill {
   id: string;
   event_id: string;
@@ -105,6 +118,7 @@ export interface Bill {
   category?: string;
   due_date?: string;
   paid_date?: string;
+  invoice_file?: string;
 }
 
 export interface Document {
@@ -117,6 +131,8 @@ export interface Document {
   file_size: string;
   uploaded_by: string;
   uploaded_at: string;
+  description?: string;
+  visibility?: "internal" | "external";
 }
 
 export interface Activity {
@@ -242,11 +258,11 @@ const tasks: Task[] = [
     assignee_id: "u1", deadline: "2026-03-01", priority: "high", status: "in-progress", created_by: "u7", created_at: "2026-02-15T10:00:00Z",
     labels: ["stage", "setup"],
     subtasks: [
-      { id: "st1", title: "Source truss hardware from vendor", completed: true },
-      { id: "st2", title: "Transport truss to venue", completed: true },
-      { id: "st3", title: "Assemble ground support structure", completed: false },
-      { id: "st4", title: "Hoist and secure to ceiling mounts", completed: true },
-      { id: "st5", title: "Safety inspection sign-off", completed: false },
+      { id: "st1", title: "Source truss hardware from vendor", completed: true, assignee_id: "u1", priority: "high", status: "completed" },
+      { id: "st2", title: "Transport truss to venue", completed: true, assignee_id: "u4", priority: "normal", status: "completed" },
+      { id: "st3", title: "Assemble ground support structure", completed: false, assignee_id: "u1", priority: "high", status: "in-progress" },
+      { id: "st4", title: "Hoist and secure to ceiling mounts", completed: true, assignee_id: "u1", priority: "urgent", status: "completed" },
+      { id: "st5", title: "Safety inspection sign-off", completed: false, assignee_id: "u6", priority: "urgent", status: "not-started" },
     ],
   },
   {
@@ -254,11 +270,11 @@ const tasks: Task[] = [
     assignee_id: "u2", deadline: "2026-03-01", priority: "urgent", status: "not-started", created_by: "u7", created_at: "2026-02-16T10:00:00Z",
     labels: ["sound"],
     subtasks: [
-      { id: "st6", title: "Test main PA system", completed: false },
-      { id: "st7", title: "Test monitor wedges on stage", completed: false },
-      { id: "st8", title: "Test wireless microphones", completed: false },
-      { id: "st9", title: "Test IEM system", completed: false },
-      { id: "st10", title: "Final mix check with artist", completed: false },
+      { id: "st6", title: "Test main PA system", completed: false, assignee_id: "u2", priority: "urgent", status: "not-started" },
+      { id: "st7", title: "Test monitor wedges on stage", completed: false, assignee_id: "u2", priority: "high", status: "not-started" },
+      { id: "st8", title: "Test wireless microphones", completed: false, assignee_id: "u1", priority: "high", status: "not-started" },
+      { id: "st9", title: "Test IEM system", completed: false, assignee_id: "u2", priority: "normal", status: "not-started" },
+      { id: "st10", title: "Final mix check with artist", completed: false, assignee_id: "u1", priority: "urgent", status: "not-started" },
     ],
   },
   {
@@ -266,11 +282,11 @@ const tasks: Task[] = [
     assignee_id: "u3", deadline: "2026-11-05", priority: "normal", status: "in-progress", created_by: "u7", created_at: "2026-02-14T10:00:00Z",
     labels: ["catering"],
     subtasks: [
-      { id: "st11", title: "Review menu options", completed: true },
-      { id: "st12", title: "Tasting session", completed: true },
-      { id: "st13", title: "Finalize dietary accommodations", completed: false },
-      { id: "st14", title: "Confirm presentation style", completed: false },
-      { id: "st15", title: "Sign contract with Chef Kumar", completed: false },
+      { id: "st11", title: "Review menu options", completed: true, assignee_id: "u3", priority: "normal", status: "completed" },
+      { id: "st12", title: "Tasting session", completed: true, assignee_id: "u3", priority: "normal", status: "completed" },
+      { id: "st13", title: "Finalize dietary accommodations", completed: false, assignee_id: "u4", priority: "high", status: "in-progress" },
+      { id: "st14", title: "Confirm presentation style", completed: false, assignee_id: "u3", priority: "normal", status: "not-started" },
+      { id: "st15", title: "Sign contract with Chef Kumar", completed: false, assignee_id: "u3", priority: "high", status: "not-started" },
     ],
   },
   {
@@ -278,11 +294,11 @@ const tasks: Task[] = [
     assignee_id: "u4", deadline: "2025-09-25", priority: "high", status: "blocked", created_by: "u7", created_at: "2026-02-10T10:00:00Z",
     labels: ["logistics"],
     subtasks: [
-      { id: "st16", title: "Get quotes from 3 vendors", completed: true },
-      { id: "st17", title: "Select vendor and negotiate", completed: true },
-      { id: "st18", title: "Confirm delivery date", completed: false },
-      { id: "st19", title: "Arrange storage at venue", completed: false },
-      { id: "st20", title: "Quality check on delivery", completed: false },
+      { id: "st16", title: "Get quotes from 3 vendors", completed: true, assignee_id: "u4", priority: "normal", status: "completed" },
+      { id: "st17", title: "Select vendor and negotiate", completed: true, assignee_id: "u4", priority: "high", status: "completed" },
+      { id: "st18", title: "Confirm delivery date", completed: false, assignee_id: "u4", priority: "high", status: "blocked" },
+      { id: "st19", title: "Arrange storage at venue", completed: false, assignee_id: "u4", priority: "normal", status: "not-started" },
+      { id: "st20", title: "Quality check on delivery", completed: false, assignee_id: "u3", priority: "normal", status: "not-started" },
     ],
   },
   {
@@ -290,11 +306,11 @@ const tasks: Task[] = [
     assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "not-started", created_by: "u7", created_at: "2026-02-12T10:00:00Z",
     labels: ["hospitality"],
     subtasks: [
-      { id: "st21", title: "Design registration badges", completed: false },
-      { id: "st22", title: "Set up check-in tablets", completed: false },
-      { id: "st23", title: "Brief registration volunteers", completed: false },
-      { id: "st24", title: "Test badge printing", completed: false },
-      { id: "st25", title: "Prepare guest list spreadsheet", completed: false },
+      { id: "st21", title: "Design registration badges", completed: false, assignee_id: "u5", priority: "normal", status: "not-started" },
+      { id: "st22", title: "Set up check-in tablets", completed: false, assignee_id: "u6", priority: "normal", status: "not-started" },
+      { id: "st23", title: "Brief registration volunteers", completed: false, assignee_id: "u5", priority: "normal", status: "not-started" },
+      { id: "st24", title: "Test badge printing", completed: false, assignee_id: "u5", priority: "high", status: "not-started" },
+      { id: "st25", title: "Prepare guest list spreadsheet", completed: false, assignee_id: "u5", priority: "normal", status: "not-started" },
     ],
   },
   {
@@ -302,10 +318,10 @@ const tasks: Task[] = [
     assignee_id: "u5", deadline: "2026-11-01", priority: "high", status: "backlog", created_by: "u7", created_at: "2026-02-13T10:00:00Z",
     labels: ["VIP"],
     subtasks: [
-      { id: "st26", title: "Arrange premium seating", completed: false },
-      { id: "st27", title: "Order VIP refreshments", completed: false },
-      { id: "st28", title: "Set up VIP signage", completed: false },
-      { id: "st29", title: "Coordinate VIP hostesses", completed: false },
+      { id: "st26", title: "Arrange premium seating", completed: false, assignee_id: "u5", priority: "normal", status: "backlog" },
+      { id: "st27", title: "Order VIP refreshments", completed: false, assignee_id: "u4", priority: "normal", status: "backlog" },
+      { id: "st28", title: "Set up VIP signage", completed: false, assignee_id: "u5", priority: "low", status: "backlog" },
+      { id: "st29", title: "Coordinate VIP hostesses", completed: false, assignee_id: "u5", priority: "normal", status: "backlog" },
     ],
   },
   {
@@ -313,9 +329,9 @@ const tasks: Task[] = [
     assignee_id: "u2", deadline: "2026-03-12", priority: "normal", status: "in-review", created_by: "u7", created_at: "2026-02-20T10:00:00Z",
     labels: ["lighting"],
     subtasks: [
-      { id: "st30", title: "Map LED panels to content server", completed: true },
-      { id: "st31", title: "Test color calibration", completed: true },
-      { id: "st32", title: "Run full show sequence", completed: false },
+      { id: "st30", title: "Map LED panels to content server", completed: true, assignee_id: "u2", priority: "normal", status: "completed" },
+      { id: "st31", title: "Test color calibration", completed: true, assignee_id: "u2", priority: "normal", status: "completed" },
+      { id: "st32", title: "Run full show sequence", completed: false, assignee_id: "u2", priority: "high", status: "in-review" },
     ],
   },
   {
@@ -323,9 +339,9 @@ const tasks: Task[] = [
     assignee_id: "u6", deadline: "2026-03-13", priority: "normal", status: "completed", created_by: "u7", created_at: "2026-02-18T10:00:00Z",
     labels: ["IT"],
     subtasks: [
-      { id: "st33", title: "Survey venue for AP placement", completed: true },
-      { id: "st34", title: "Install access points", completed: true },
-      { id: "st35", title: "Configure network security", completed: true },
+      { id: "st33", title: "Survey venue for AP placement", completed: true, assignee_id: "u6", priority: "normal", status: "completed" },
+      { id: "st34", title: "Install access points", completed: true, assignee_id: "u6", priority: "normal", status: "completed" },
+      { id: "st35", title: "Configure network security", completed: true, assignee_id: "u6", priority: "high", status: "completed" },
     ],
   },
 ];
@@ -339,6 +355,11 @@ const taskComments: TaskComment[] = [
   { id: "tc6", task_id: "t7", author_id: "u2", body: "Color calibration complete. Running final sequence tomorrow.", created_at: "2026-02-22T16:00:00Z" },
 ];
 
+const billEditLogs: BillEditLog[] = [
+  { id: "bel1", bill_id: "b1", user_id: "u1", field: "amount", old_value: "₹90K", new_value: "₹95K", created_at: "2026-02-20T12:00:00Z" },
+  { id: "bel2", bill_id: "b3", user_id: "u7", field: "status", old_value: "CA Approved", new_value: "Settled", created_at: "2026-02-13T09:00:00Z" },
+];
+
 const bills: Bill[] = [
   {
     id: "b1", event_id: "e1", dept_id: "d2", vendor_name: "AV Rentals India", description: "LED panel rental and AV equipment for main stage",
@@ -346,7 +367,7 @@ const bills: Bill[] = [
     status: "dept-verified", advance_status: "advance-given", category: "Equipment",
     submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-20T10:00:00Z", dept_verified_at: "2026-02-21T14:00:00Z", ca_approved_at: null, settled_at: null,
-    due_date: "2026-03-10",
+    due_date: "2026-03-10", invoice_file: "av_rentals_inv_001.pdf",
   },
   {
     id: "b2", event_id: "e1", dept_id: "d3", vendor_name: "Chef Kumar Catering", description: "Advance for catering supplies and raw materials",
@@ -354,7 +375,7 @@ const bills: Bill[] = [
     status: "pending", advance_status: "advance-given", category: "Catering",
     submitted_by: "u3", dept_verified_by: null, ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-25T09:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
-    due_date: "2026-03-05",
+    due_date: "2026-03-05", invoice_file: "chef_kumar_inv_045.pdf",
   },
   {
     id: "b3", event_id: "e1", dept_id: "d2", vendor_name: "LightMasters Pvt Ltd", description: "Complete lighting setup and ambient design for venue",
@@ -362,7 +383,7 @@ const bills: Bill[] = [
     status: "settled", advance_status: "settled", category: "Lighting",
     submitted_by: "u1", dept_verified_by: "u2", ca_approved_by: "u6", settled_by: "u7",
     submitted_at: "2026-02-10T11:00:00Z", dept_verified_at: "2026-02-11T10:00:00Z", ca_approved_at: "2026-02-12T09:00:00Z", settled_at: "2026-02-13T09:00:00Z",
-    due_date: "2026-02-15", paid_date: "2026-02-13",
+    due_date: "2026-02-15", paid_date: "2026-02-13", invoice_file: "lightmasters_inv_112.pdf",
   },
   {
     id: "b4", event_id: "e1", dept_id: "d1", vendor_name: "ProSound Systems", description: "Sound system rental for main stage and breakout rooms",
@@ -370,7 +391,7 @@ const bills: Bill[] = [
     status: "pending", advance_status: "advance-given", category: "Equipment",
     submitted_by: "u2", dept_verified_by: null, ca_approved_by: null, settled_by: null,
     submitted_at: "2026-02-26T10:00:00Z", dept_verified_at: null, ca_approved_at: null, settled_at: null,
-    due_date: "2026-03-12",
+    due_date: "2026-03-12", invoice_file: "prosound_inv_089.pdf",
   },
   {
     id: "b5", event_id: "e1", dept_id: "d4", vendor_name: "TransLogix India", description: "Transport vehicles for equipment and staff shuttle",
@@ -378,15 +399,15 @@ const bills: Bill[] = [
     status: "ca-approved", advance_status: "advance-given", category: "Transport",
     submitted_by: "u4", dept_verified_by: "u4", ca_approved_by: "u6", settled_by: null,
     submitted_at: "2026-02-22T10:00:00Z", dept_verified_at: "2026-02-23T10:00:00Z", ca_approved_at: "2026-02-24T10:00:00Z", settled_at: null,
-    due_date: "2026-03-01",
+    due_date: "2026-03-01", invoice_file: "translogix_inv_033.pdf",
   },
 ];
 
 const documents: Document[] = [
-  { id: "doc1", event_id: "e1", dept_id: "d1", name: "Truss Layout v3.pdf", folder: "Layouts", file_url: "", file_size: "8.1 MB", uploaded_by: "u1", uploaded_at: "2026-09-12T10:00:00Z" },
-  { id: "doc2", event_id: "e1", dept_id: null, name: "Main Contract – NSCI.pdf", folder: "Contracts", file_url: "", file_size: "2.4 MB", uploaded_by: "u5", uploaded_at: "2026-09-10T14:00:00Z" },
-  { id: "doc3", event_id: "e1", dept_id: null, name: "Fire Safety Permit.pdf", folder: "Permits", file_url: "", file_size: "1.2 MB", uploaded_by: "u5", uploaded_at: "2026-09-15T09:00:00Z" },
-  { id: "doc4", event_id: "e1", dept_id: "d3", name: "Catering Menu Final.pdf", folder: "Other", file_url: "", file_size: "0.8 MB", uploaded_by: "u3", uploaded_at: "2026-09-20T11:00:00Z" },
+  { id: "doc1", event_id: "e1", dept_id: "d1", name: "Truss Layout v3.pdf", folder: "Layouts", file_url: "", file_size: "8.1 MB", uploaded_by: "u1", uploaded_at: "2026-09-12T10:00:00Z", description: "Final truss layout for main stage" },
+  { id: "doc2", event_id: "e1", dept_id: null, name: "Main Contract – NSCI.pdf", folder: "Contracts", file_url: "", file_size: "2.4 MB", uploaded_by: "u5", uploaded_at: "2026-09-10T14:00:00Z", description: "Main venue contract" },
+  { id: "doc3", event_id: "e1", dept_id: null, name: "Fire Safety Permit.pdf", folder: "Permits", file_url: "", file_size: "1.2 MB", uploaded_by: "u5", uploaded_at: "2026-09-15T09:00:00Z", description: "Fire safety compliance permit" },
+  { id: "doc4", event_id: "e1", dept_id: "d3", name: "Catering Menu Final.pdf", folder: "Other", file_url: "", file_size: "0.8 MB", uploaded_by: "u3", uploaded_at: "2026-09-20T11:00:00Z", description: "Final catering menu selections" },
 ];
 
 const activities: Activity[] = [
@@ -437,10 +458,13 @@ interface MockDataContextType {
   events: Event[];
   setEvents: (e: Event[]) => void;
   departments: Department[];
+  setDepartments: (d: Department[]) => void;
   tasks: Task[];
   taskComments: TaskComment[];
   bills: Bill[];
+  billEditLogs: BillEditLog[];
   documents: Document[];
+  setDocuments: (d: Document[]) => void;
   activities: Activity[];
   deptHealth: DeptHealth[];
   notifications: Notification[];
@@ -448,6 +472,7 @@ interface MockDataContextType {
   setNotifications: (n: Notification[]) => void;
   setTasks: (t: Task[]) => void;
   setBills: (b: Bill[]) => void;
+  setBillEditLogs: (l: BillEditLog[]) => void;
   setTaskComments: (c: TaskComment[]) => void;
   login: (email: string, password: string) => boolean;
   signup: (name: string, email: string, password: string) => boolean;
@@ -461,6 +486,7 @@ interface MockDataContextType {
   getTasksByDept: (deptId: string) => Task[];
   getCommentsByTask: (taskId: string) => TaskComment[];
   getBillsByEvent: (eventId: string) => Bill[];
+  getBillEditLogs: (billId: string) => BillEditLog[];
   getDocsByEvent: (eventId: string) => Document[];
   getActivitiesByEvent: (eventId: string) => Activity[];
   getUserNotifications: () => Notification[];
@@ -478,6 +504,9 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   const [commentList, setTaskComments] = useState(taskComments);
   const [billList, setBills] = useState(bills);
   const [eventList, setEvents] = useState(events);
+  const [deptList, setDepartments] = useState(departments);
+  const [docList, setDocuments] = useState(documents);
+  const [editLogs, setBillEditLogs] = useState(billEditLogs);
 
   const login = useCallback((email: string, _password: string) => {
     const found = profiles.find(p => p.email === email);
@@ -503,13 +532,14 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
 
   const getProfile = (id: string) => profiles.find(p => p.id === id);
   const getEvent = (id: string) => eventList.find(e => e.id === id);
-  const getDepartment = (id: string) => departments.find(d => d.id === id);
-  const getDeptsByEvent = (eventId: string) => departments.filter(d => d.event_id === eventId);
+  const getDepartment = (id: string) => deptList.find(d => d.id === id);
+  const getDeptsByEvent = (eventId: string) => deptList.filter(d => d.event_id === eventId);
   const getTasksByEvent = (eventId: string) => taskList.filter(t => t.event_id === eventId);
   const getTasksByDept = (deptId: string) => taskList.filter(t => t.dept_id === deptId);
   const getCommentsByTask = (taskId: string) => commentList.filter(c => c.task_id === taskId);
   const getBillsByEvent = (eventId: string) => billList.filter(b => b.event_id === eventId);
-  const getDocsByEvent = (eventId: string) => documents.filter(d => d.event_id === eventId);
+  const getBillEditLogs = (billId: string) => editLogs.filter(l => l.bill_id === billId);
+  const getDocsByEvent = (eventId: string) => docList.filter(d => d.event_id === eventId);
   const getActivitiesByEvent = (eventId: string) => activities.filter(a => a.event_id === eventId);
   const getUserNotifications = () => notifs.filter(n => n.user_id === currentUser.id);
 
@@ -517,13 +547,14 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     <MockDataContext.Provider value={{
       currentUser, setCurrentUser, isAuthenticated, setIsAuthenticated,
       hasSelectedRole, setHasSelectedRole,
-      profiles, subscription, events: eventList, setEvents, departments,
-      tasks: taskList, taskComments: commentList, bills: billList, documents, activities, deptHealth: deptHealthData, notifications: notifs,
+      profiles, subscription, events: eventList, setEvents, departments: deptList, setDepartments,
+      tasks: taskList, taskComments: commentList, bills: billList, billEditLogs: editLogs,
+      documents: docList, setDocuments, activities, deptHealth: deptHealthData, notifications: notifs,
       organisations,
-      setNotifications, setTasks, setBills, setTaskComments,
+      setNotifications, setTasks, setBills, setBillEditLogs, setTaskComments,
       login, signup, logout, selectRole,
       getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
-      getCommentsByTask, getBillsByEvent, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
+      getCommentsByTask, getBillsByEvent, getBillEditLogs, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
       isFreePlan: subscription.plan === "free",
     }}>
       {children}
