@@ -45,7 +45,7 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks
+    tasks: allTasks, setTasks, departments, setDepartments, profiles
   } = useMockData();
 
   const initialTab = (searchParams.get("tab") as Tab) || "overview";

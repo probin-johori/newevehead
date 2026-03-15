@@ -51,6 +51,7 @@ export interface Department {
   allocated_budget: number;
   spent: number;
   notes: string;
+  member_ids?: string[];
 }
 
 export interface SubTask {
