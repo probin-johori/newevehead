@@ -1,14 +1,15 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMockData, formatDate, formatINRShort } from "@/context/MockDataContext";
-import type { Task, TaskStatus } from "@/context/MockDataContext";
+import type { Task, TaskStatus, TaskPriority } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { TaskDetailSheet } from "@/components/TaskDetailSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
+import { useScrollLock } from "@/hooks/useScrollLock";
 import { useState, useEffect } from "react";
 import {
   ChatCircle, Flag, Plus, ListBullets, Kanban, CaretRight,
-  ListChecks, CheckSquare, Square
+  ListChecks, CheckSquare, Square, X
 } from "@phosphor-icons/react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "@/hooks/use-toast";
@@ -36,7 +37,7 @@ export default function TasksPage() {
   const [searchParams] = useSearchParams();
   const {
     tasks, events, getProfile, getDepartment, getEvent, currentUser,
-    getCommentsByTask, setTasks, profiles
+    getCommentsByTask, setTasks, profiles, departments
   } = useMockData();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const [eventFilter, setEventFilter] = useState(searchParams.get("event") || "all");
@@ -48,6 +49,15 @@ export default function TasksPage() {
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [newTaskTitle, setNewTaskTitle] = useState<Record<string, string>>({});
   const [sortBy, setSortBy] = useState<"deadline" | "priority" | "status" | "assignee">("deadline");
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Add task form
+  const [addForm, setAddForm] = useState({
+    title: "", description: "", event_id: "", assignee_id: "", deadline: "",
+    priority: "normal" as TaskPriority, status: "not-started" as TaskStatus, labels: "",
+  });
+
+  useScrollLock(showAddModal);
 
   useEffect(() => {
     const ev = searchParams.get("event");
@@ -115,6 +125,47 @@ export default function TasksPage() {
     toast({ title: "Task created" });
   };
 
+  const handleAddTask = () => {
+    if (!addForm.title.trim()) {
+      toast({ title: "Title is required", variant: "destructive" });
+      return;
+    }
+    const eventId = addForm.event_id || events[0]?.id || "e1";
+    const deptForEvent = departments.find(d => d.event_id === eventId);
+    const newTask: Task = {
+      id: `t_new_${Date.now()}`,
+      event_id: eventId,
+      dept_id: deptForEvent?.id || "d1",
+      title: addForm.title.trim(),
+      description: addForm.description,
+      assignee_id: addForm.assignee_id || currentUser.id,
+      deadline: addForm.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+      priority: addForm.priority,
+      status: addForm.status,
+      subtasks: [],
+      created_by: currentUser.id,
+      created_at: new Date().toISOString(),
+      labels: addForm.labels ? addForm.labels.split(",").map(l => l.trim()).filter(Boolean) : undefined,
+    };
+    setTasks([...tasks, newTask]);
+    setShowAddModal(false);
+    setAddForm({ title: "", description: "", event_id: "", assignee_id: "", deadline: "", priority: "normal", status: "not-started", labels: "" });
+    toast({ title: "Task created" });
+  };
+
+  // Column widths for consistent table layout
+  const colWidths = {
+    checkbox: "w-10",
+    task: "w-[30%]",
+    event: "w-[14%]",
+    assignee: "w-[14%]",
+    priority: "w-[10%]",
+    status: "w-[10%]",
+    subtasks: "w-[8%]",
+    due: "w-[10%]",
+    action: "w-8",
+  };
+
   return (
     <div className="p-6 w-full">
       <div className="flex items-center justify-between mb-5">
@@ -131,8 +182,8 @@ export default function TasksPage() {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-            <Plus size={14} /> Create Task
+          <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+            <Plus size={14} /> Add Task
           </button>
         </div>
       </div>
@@ -186,21 +237,21 @@ export default function TasksPage() {
       {/* LIST VIEW */}
       {viewMode === "list" && (
         <div className="rounded-xl border border-stroke overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead>
               <tr className="border-b border-stroke">
-                <th className="w-10 px-3"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-accent" onChange={e => {
+                <th className={`${colWidths.checkbox} px-3`}><input type="checkbox" className="h-3.5 w-3.5 rounded accent-accent" onChange={e => {
                   if (e.target.checked) setSelectedTasks(new Set(sortedFiltered.map(t => t.id)));
                   else setSelectedTasks(new Set());
                 }} /></th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
-                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                <th className="w-8"></th>
+                <th className={`${colWidths.task} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Task</th>
+                <th className={`${colWidths.event} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Event</th>
+                <th className={`${colWidths.assignee} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Assignee</th>
+                <th className={`${colWidths.priority} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Priority</th>
+                <th className={`${colWidths.status} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
+                <th className={`${colWidths.subtasks} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Subtasks</th>
+                <th className={`${colWidths.due} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Due</th>
+                <th className={colWidths.action}></th>
               </tr>
             </thead>
             <tbody>
@@ -214,42 +265,42 @@ export default function TasksPage() {
                 return (
                   <tr key={t.id} onClick={() => setSelectedTask(t.id)}
                     className={`border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors ${selectedTasks.has(t.id) ? "bg-selected/50" : ""}`}>
-                    <td className="px-3" onClick={e => e.stopPropagation()}>
+                    <td className={`${colWidths.checkbox} px-3`} onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedTasks.has(t.id)} onChange={() => toggleSelectTask(t.id)} className="h-3.5 w-3.5 rounded accent-accent" />
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{t.title}</span>
-                        {commentCount > 0 && <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground"><ChatCircle size={12} />{commentCount}</span>}
+                    <td className={`${colWidths.task} px-4 py-3`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium truncate">{t.title}</span>
+                        {commentCount > 0 && <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0"><ChatCircle size={12} />{commentCount}</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <button className="text-muted-foreground hover:text-accent transition-colors text-sm"
+                    <td className={`${colWidths.event} px-4 py-3`}>
+                      <button className="text-muted-foreground hover:text-accent transition-colors text-sm truncate"
                         onClick={e => { e.stopPropagation(); navigate(`/events/${t.event_id}`); }}>
                         {ev?.name}
                       </button>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={`${colWidths.assignee} px-4 py-3`}>
                       {assignee && (
-                        <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80">
-                          <UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span>{assignee.name}</span>
+                        <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80 min-w-0">
+                          <UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span className="truncate">{assignee.name}</span>
                         </button>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={`${colWidths.priority} px-4 py-3`}>
                       <div className="flex items-center gap-1">
                         <Flag size={13} weight="fill" className={pc.color} />
                         <span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                    <td className="px-4 py-3">
+                    <td className={`${colWidths.status} px-4 py-3`}><StatusBadge status={t.status} /></td>
+                    <td className={`${colWidths.subtasks} px-4 py-3`}>
                       {t.subtasks.length > 0 ? (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground"><ListChecks size={13} />{doneSubtasks}/{t.subtasks.length}</span>
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </td>
-                    <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                    <td className="px-4 py-3"><CaretRight size={14} className="text-muted-foreground" /></td>
+                    <td className={`${colWidths.due} px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
+                    <td className={`${colWidths.action} px-4 py-3`}><CaretRight size={14} className="text-muted-foreground" /></td>
                   </tr>
                 );
               })}
@@ -343,11 +394,90 @@ export default function TasksPage() {
       {filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
           <span className="text-3xl mb-3">📋</span>
-          <p className="text-sm text-muted-foreground mb-3">No tasks match your filters.</p>
-          <button className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-            Create your first task
+          <p className="text-sm font-medium mb-1">No tasks found</p>
+          <p className="text-sm text-muted-foreground mb-4">Try adjusting your filters or create a new task.</p>
+          <button onClick={() => setShowAddModal(true)} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+            <Plus size={14} className="inline mr-1" /> Create Task
           </button>
         </div>
+      )}
+
+      {/* Add Task Modal */}
+      {showAddModal && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddModal(false)} />
+          <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
+            <div className="w-full max-w-lg rounded-xl bg-card border border-stroke p-6 shadow-[0_8px_40px_rgba(0,0,0,0.15)] space-y-4 max-h-[90vh] overflow-y-auto"
+              onKeyDown={e => e.key === "Escape" && setShowAddModal(false)}>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Add Task</h3>
+                <button onClick={() => setShowAddModal(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Title <span className="text-destructive">*</span></label>
+                  <input value={addForm.title} onChange={e => setAddForm(p => ({ ...p, title: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="Task title" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Description</label>
+                  <textarea value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" rows={2} placeholder="Task description" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Event</label>
+                    <select value={addForm.event_id} onChange={e => setAddForm(p => ({ ...p, event_id: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                      <option value="">Select event</option>
+                      {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Assignee</label>
+                    <select value={addForm.assignee_id} onChange={e => setAddForm(p => ({ ...p, assignee_id: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                      <option value="">Assign to...</option>
+                      {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Deadline</label>
+                    <input type="date" value={addForm.deadline} onChange={e => setAddForm(p => ({ ...p, deadline: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Priority</label>
+                    <select value={addForm.priority} onChange={e => setAddForm(p => ({ ...p, priority: e.target.value as TaskPriority }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                      <option value="urgent">Urgent</option>
+                      <option value="high">High</option>
+                      <option value="normal">Normal</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Status</label>
+                    <select value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value as TaskStatus }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                      {BOARD_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Labels</label>
+                    <input value={addForm.labels} onChange={e => setAddForm(p => ({ ...p, labels: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="tag1, tag2" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowAddModal(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                <button onClick={handleAddTask}
+                  className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Create Task</button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
