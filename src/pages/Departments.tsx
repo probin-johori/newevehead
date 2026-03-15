@@ -22,6 +22,7 @@ export default function DepartmentsPage() {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [deptTab, setDeptTab] = useState<DeptTab>("events");
   const [addForm, setAddForm] = useState({ name: "", notes: "", head_id: "" });
+  const [showAddMember, setShowAddMember] = useState(false);
 
   useScrollLock(showAddModal);
 
