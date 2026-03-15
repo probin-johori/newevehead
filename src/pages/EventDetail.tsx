@@ -107,6 +107,12 @@ export default function EventDetailPage() {
     setIsEditing(false);
   };
 
+  const handleImageSelect = (url: string) => {
+    setEvents(events.map(e => e.id === event.id ? { ...e, image_url: url } : e));
+    setShowImageUpload(false);
+    toast({ title: "Event image updated" });
+  };
+
   const handleApproveBill = (billId: string) => {
     setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
     toast({ title: "Bill approved" });
