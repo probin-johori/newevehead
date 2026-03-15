@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
+import { Eye, EyeSlash } from "@phosphor-icons/react";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
@@ -11,6 +12,7 @@ export default function SignupPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -61,8 +63,14 @@ export default function SignupPage() {
           </div>
           <div>
             <label className="text-sm font-medium">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="••••••••" />
+            <div className="relative mt-1">
+              <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                className="block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 pr-10 text-sm focus:outline-none" placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Toggle password">
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
           </div>
           <button type="submit" disabled={loading || googleLoading} className="w-full rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors disabled:opacity-50">
             {loading ? "Creating account…" : "Create Account"}

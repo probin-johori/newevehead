@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
+import { Eye, EyeSlash } from "@phosphor-icons/react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,6 +12,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
@@ -22,6 +29,45 @@ export default function LoginPage() {
     if (err) setError(err);
     else navigate("/dashboard");
   };
+
+  const handleResetPassword = async () => {
+    if (!resetEmail) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setResetSent(true);
+    }
+  };
+
+  if (showReset) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-rose-500 text-lg font-bold text-white">ZH</div>
+            <h1 className="text-2xl font-semibold">{resetSent ? "Check your email" : "Reset Password"}</h1>
+            {resetSent && <p className="text-sm text-muted-foreground mt-2">We've sent a reset link to <strong>{resetEmail}</strong></p>}
+          </div>
+          {!resetSent && (
+            <div className="space-y-4 rounded-xl border border-stroke bg-card p-6">
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <input type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="you@example.com" />
+              </div>
+              <button onClick={handleResetPassword} className="w-full rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+                Send Reset Link
+              </button>
+            </div>
+          )}
+          <button onClick={() => { setShowReset(false); setResetSent(false); }} className="mt-4 block mx-auto text-sm text-accent hover:underline">Back to sign in</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -40,8 +86,16 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="text-sm font-medium">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="••••••••" />
+            <div className="relative mt-1">
+              <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                className="block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 pr-10 text-sm focus:outline-none focus:border-muted-foreground" placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Toggle password">
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <button type="button" onClick={() => { setShowReset(true); setResetEmail(email); }}
+              className="text-xs text-accent hover:underline mt-1">Forgot password?</button>
           </div>
           <button type="submit" disabled={loading || googleLoading} className="w-full rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors disabled:opacity-50">
             {loading ? "Signing in…" : "Sign In"}
