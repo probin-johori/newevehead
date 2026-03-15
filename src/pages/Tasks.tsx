@@ -3,13 +3,12 @@ import { useMockData, formatDate, formatINRShort } from "@/context/MockDataConte
 import type { Task, TaskStatus } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useScrollLock } from "@/hooks/useScrollLock";
+import { TaskDetailSheet } from "@/components/TaskDetailSheet";
+import { UserProfileModal } from "@/components/UserProfileModal";
 import { useState, useEffect } from "react";
 import {
-  ChatCircle, PaperPlaneRight, PencilSimple, Trash, X, CaretRight, Flag, Plus,
-  ListChecks, Kanban, CalendarBlank, Funnel, ListBullets, DotsThree,
-  CheckSquare, Square
+  ChatCircle, Flag, Plus, ListBullets, Kanban, CaretRight,
+  ListChecks, CheckSquare, Square
 } from "@phosphor-icons/react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { toast } from "@/hooks/use-toast";
@@ -21,7 +20,7 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
   low: { color: "text-muted-foreground", label: "Low" },
 };
 
-type ViewMode = "list" | "board" | "timeline";
+type ViewMode = "list" | "board";
 
 const BOARD_COLUMNS: { key: TaskStatus; label: string; color: string }[] = [
   { key: "backlog", label: "Backlog", color: "bg-gray-400" },
@@ -37,69 +36,48 @@ export default function TasksPage() {
   const [searchParams] = useSearchParams();
   const {
     tasks, events, getProfile, getDepartment, getEvent, currentUser,
-    getCommentsByTask, taskComments, setTaskComments, setTasks
+    getCommentsByTask, setTasks, profiles
   } = useMockData();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const [eventFilter, setEventFilter] = useState(searchParams.get("event") || "all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<string | null>(searchParams.get("task"));
-  const [newComment, setNewComment] = useState("");
-  const [editingComment, setEditingComment] = useState<string | null>(null);
-  const [editBody, setEditBody] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [confirmEdit, setConfirmEdit] = useState<string | null>(null);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
   const [newTaskTitle, setNewTaskTitle] = useState<Record<string, string>>({});
-
-  useScrollLock(!!selectedTask);
+  const [sortBy, setSortBy] = useState<"deadline" | "priority" | "status" | "assignee">("deadline");
 
   useEffect(() => {
     const ev = searchParams.get("event");
     const st = searchParams.get("status");
     const task = searchParams.get("task");
+    const view = searchParams.get("view");
     if (ev) setEventFilter(ev);
     if (st) setStatusFilter(st);
     if (task) setSelectedTask(task);
+    if (view === "my") setAssigneeFilter(currentUser.id);
   }, [searchParams]);
 
-  const visibleTasks = currentUser.role === "dept_member"
-    ? tasks.filter(t => t.assignee_id === currentUser.id)
-    : tasks;
+  const visibleTasks = tasks;
 
   const filtered = visibleTasks.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (eventFilter !== "all" && t.event_id !== eventFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+    if (assigneeFilter !== "all" && t.assignee_id !== assigneeFilter) return false;
     return true;
   });
 
-  const task = selectedTask ? tasks.find(t => t.id === selectedTask) : null;
-  const comments = task ? getCommentsByTask(task.id) : [];
-
-  const handleSubmitComment = () => {
-    if (!newComment.trim() || !task) return;
-    setTaskComments([...taskComments, {
-      id: `tc_new_${Date.now()}`, task_id: task.id, author_id: currentUser.id,
-      body: newComment.trim(), created_at: new Date().toISOString(),
-    }]);
-    setNewComment("");
-  };
-
-  const handleDeleteComment = (commentId: string) => {
-    setTaskComments(taskComments.filter(c => c.id !== commentId));
-    setConfirmDelete(null);
-    toast({ title: "Comment deleted" });
-  };
-
-  const handleEditComment = (commentId: string) => {
-    if (!editBody.trim()) return;
-    setTaskComments(taskComments.map(c => c.id === commentId ? { ...c, body: editBody.trim() } : c));
-    setEditingComment(null);
-    setEditBody("");
-    setConfirmEdit(null);
-    toast({ title: "Comment updated" });
-  };
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortBy === "deadline") return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    if (sortBy === "priority") {
+      const order = { urgent: 0, high: 1, normal: 2, low: 3 };
+      return (order[a.priority] || 2) - (order[b.priority] || 2);
+    }
+    return 0;
+  });
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -145,9 +123,8 @@ export default function TasksPage() {
           <p className="text-sm text-muted-foreground">{visibleTasks.length} tasks</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View toggle */}
           <div className="flex items-center rounded-full border border-stroke bg-secondary overflow-hidden">
-            {([["list", ListBullets], ["board", Kanban], ["timeline", CalendarBlank]] as [ViewMode, any][]).map(([mode, Icon]) => (
+            {([["list", ListBullets], ["board", Kanban]] as [ViewMode, any][]).map(([mode, Icon]) => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium transition-colors ${viewMode === mode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}>
                 <Icon size={13} /> {mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -161,7 +138,7 @@ export default function TasksPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
         <select value={eventFilter} onChange={e => setEventFilter(e.target.value)}
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
           <option value="all">All Events</option>
@@ -170,12 +147,7 @@ export default function TasksPage() {
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
           <option value="all">All Status</option>
-          <option value="backlog">Backlog</option>
-          <option value="not-started">To Do</option>
-          <option value="in-progress">In Progress</option>
-          <option value="in-review">In Review</option>
-          <option value="blocked">Blocked</option>
-          <option value="completed">Done</option>
+          {BOARD_COLUMNS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
         </select>
         <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)}
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
@@ -185,6 +157,20 @@ export default function TasksPage() {
           <option value="normal">Normal</option>
           <option value="low">Low</option>
         </select>
+        <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}
+          className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
+          <option value="all">All Assignees</option>
+          <option value={currentUser.id}>My Tasks</option>
+          {profiles.filter(p => p.id !== currentUser.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        {viewMode === "list" && (
+          <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
+            className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground ml-auto">
+            <option value="deadline">Sort: Due Date</option>
+            <option value="priority">Sort: Priority</option>
+            <option value="status">Sort: Status</option>
+          </select>
+        )}
         {selectedTasks.size > 0 && (
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs text-muted-foreground">{selectedTasks.size} selected</span>
@@ -197,14 +183,14 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* ===== LIST VIEW ===== */}
+      {/* LIST VIEW */}
       {viewMode === "list" && (
         <div className="rounded-xl border border-stroke overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-stroke">
                 <th className="w-10 px-3"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-accent" onChange={e => {
-                  if (e.target.checked) setSelectedTasks(new Set(filtered.map(t => t.id)));
+                  if (e.target.checked) setSelectedTasks(new Set(sortedFiltered.map(t => t.id)));
                   else setSelectedTasks(new Set());
                 }} /></th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
@@ -218,7 +204,7 @@ export default function TasksPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(t => {
+              {sortedFiltered.map(t => {
                 const ev = getEvent(t.event_id);
                 const assignee = getProfile(t.assignee_id);
                 const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
@@ -229,8 +215,7 @@ export default function TasksPage() {
                   <tr key={t.id} onClick={() => setSelectedTask(t.id)}
                     className={`border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors ${selectedTasks.has(t.id) ? "bg-selected/50" : ""}`}>
                     <td className="px-3" onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" checked={selectedTasks.has(t.id)} onChange={() => toggleSelectTask(t.id)}
-                        className="h-3.5 w-3.5 rounded accent-accent" />
+                      <input type="checkbox" checked={selectedTasks.has(t.id)} onChange={() => toggleSelectTask(t.id)} className="h-3.5 w-3.5 rounded accent-accent" />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -244,7 +229,13 @@ export default function TasksPage() {
                         {ev?.name}
                       </button>
                     </td>
-                    <td className="px-4 py-3">{assignee && <div className="flex items-center gap-1.5"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span>{assignee.name}</span></div>}</td>
+                    <td className="px-4 py-3">
+                      {assignee && (
+                        <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80">
+                          <UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span>{assignee.name}</span>
+                        </button>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <Flag size={13} weight="fill" className={pc.color} />
@@ -267,7 +258,7 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* ===== BOARD VIEW ===== */}
+      {/* BOARD VIEW */}
       {viewMode === "board" && (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
@@ -296,9 +287,7 @@ export default function TasksPage() {
                                 <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                                   onClick={() => setSelectedTask(t.id)}
                                   className="rounded-lg border border-stroke bg-card p-3 cursor-pointer hover:shadow-sm transition-shadow space-y-2">
-                                  <div className="flex items-start justify-between">
-                                    <p className="text-sm font-medium leading-tight">{t.title}</p>
-                                  </div>
+                                  <p className="text-sm font-medium leading-tight">{t.title}</p>
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {ev && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">{ev.name}</span>}
                                     <div className="flex items-center gap-0.5">
@@ -322,7 +311,6 @@ export default function TasksPage() {
                           );
                         })}
                         {provided.placeholder}
-                        {/* Inline add */}
                         <div className="mt-1">
                           {newTaskTitle[col.key] !== undefined ? (
                             <div className="space-y-1.5">
@@ -352,34 +340,6 @@ export default function TasksPage() {
         </DragDropContext>
       )}
 
-      {/* ===== TIMELINE VIEW ===== */}
-      {viewMode === "timeline" && (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground mb-4">Tasks ordered by deadline</p>
-          {filtered.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()).map(t => {
-            const ev = getEvent(t.event_id);
-            const assignee = getProfile(t.assignee_id);
-            const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
-            const pc = priorityConfig[t.priority] || priorityConfig.normal;
-            return (
-              <div key={t.id} onClick={() => setSelectedTask(t.id)}
-                className="flex items-center gap-4 rounded-xl border border-stroke px-4 py-3 hover:bg-selected cursor-pointer transition-colors">
-                <div className={`text-xs font-semibold tabular-nums w-16 ${overdue ? "text-red-600" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{t.title}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {ev && <span className="text-[10px] text-muted-foreground">{ev.name}</span>}
-                    <div className="flex items-center gap-0.5"><Flag size={11} weight="fill" className={pc.color} /><span className={`text-[10px] ${pc.color}`}>{pc.label}</span></div>
-                  </div>
-                </div>
-                <StatusBadge status={t.status} />
-                {assignee && <UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" />}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
           <span className="text-3xl mb-3">📋</span>
@@ -390,116 +350,8 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Task Detail Slide-in Panel */}
-      {task && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedTask(null)} />
-          <div className="fixed right-0 top-0 z-50 h-full w-full max-w-xl overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 space-y-5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <StatusBadge status={task.status} />
-                  <StatusBadge status={task.priority} />
-                  {(() => {
-                    const daysLeft = Math.ceil((new Date(task.deadline).getTime() - Date.now()) / 86400000);
-                    return <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${daysLeft < 0 ? "bg-red-50 text-red-600" : "bg-secondary text-muted-foreground"}`}>
-                      {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`}
-                    </span>;
-                  })()}
-                </div>
-                <h2 className="text-lg font-semibold">{task.title}</h2>
-                {task.description && <p className="text-sm text-muted-foreground leading-relaxed">{task.description}</p>}
-              </div>
-              <button onClick={() => setSelectedTask(null)} className="text-muted-foreground hover:text-foreground ml-4"><X size={20} /></button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 border-t border-stroke pt-4 text-sm">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p>
-                <button onClick={() => { setSelectedTask(null); navigate(`/events/${task.event_id}`); }} className="text-sm font-medium hover:text-accent transition-colors">{getEvent(task.event_id)?.name}</button>
-                <p className="text-xs text-muted-foreground">{getDepartment(task.dept_id)?.name}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Assignee</p>
-                {(() => { const a = getProfile(task.assignee_id); return a ? <div className="flex items-center gap-1.5"><UserAvatar name={a.name} color={a.avatar_color} size="sm" /><span>{a.name}</span></div> : null; })()}
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Deadline</p>
-                <p>{formatDate(task.deadline)}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Subtasks</p>
-                <p>{task.subtasks.filter(s => s.completed).length}/{task.subtasks.length} completed</p>
-              </div>
-            </div>
-
-            {/* Subtasks */}
-            {task.subtasks.length > 0 && (
-              <div className="border-t border-stroke pt-4">
-                <h3 className="text-sm font-semibold mb-3">Sub-tasks ({task.subtasks.filter(s => s.completed).length}/{task.subtasks.length})</h3>
-                <div className="space-y-2">
-                  {task.subtasks.map(st => (
-                    <div key={st.id} className="flex items-center gap-2">
-                      <input type="checkbox" checked={st.completed} readOnly className="h-4 w-4 rounded border-stroke accent-accent" />
-                      <span className={`text-sm ${st.completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Comments / Thread */}
-            <div className="border-t border-stroke pt-4">
-              <h3 className="text-sm font-semibold mb-3">Discussion ({comments.length})</h3>
-              <div className="space-y-3">
-                {comments.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No comments yet.</p>}
-                {comments.map(c => {
-                  const author = getProfile(c.author_id);
-                  const canEdit = c.author_id === currentUser.id;
-                  const canDelete = c.author_id === currentUser.id || currentUser.role === "sa";
-                  return (
-                    <div key={c.id} className="flex gap-3">
-                      {author && <UserAvatar name={author.name} color={author.avatar_color} size="sm" />}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{author?.name}</span>
-                          <span className="text-[11px] text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</span>
-                          {canEdit && <button onClick={() => { setEditingComment(c.id); setEditBody(c.body); }} className="text-muted-foreground hover:text-foreground ml-auto"><PencilSimple size={13} /></button>}
-                          {canDelete && <button onClick={() => setConfirmDelete(c.id)} className="text-muted-foreground hover:text-red-600"><Trash size={13} /></button>}
-                        </div>
-                        {editingComment === c.id ? (
-                          <div className="flex gap-2 mt-1">
-                            <input value={editBody} onChange={e => setEditBody(e.target.value)}
-                              onKeyDown={e => { if (e.key === "Enter") setConfirmEdit(c.id); }}
-                              className="flex-1 rounded-lg border border-stroke bg-secondary px-3 py-1.5 text-sm focus:outline-none" />
-                            <button onClick={() => setConfirmEdit(c.id)} className="rounded-full bg-foreground px-3 py-1.5 text-xs text-background font-medium">Save</button>
-                            <button onClick={() => { setEditingComment(null); setEditBody(""); }} className="text-xs text-muted-foreground">Cancel</button>
-                          </div>
-                        ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{c.body}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-3 mt-4">
-                <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
-                <div className="flex-1 flex gap-2">
-                  <input value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSubmitComment()}
-                    placeholder="Write a comment..." className="flex-1 rounded-full border border-stroke bg-secondary px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none" />
-                  <button onClick={handleSubmitComment} disabled={!newComment.trim()} className="rounded-full bg-foreground px-3 py-2 text-background hover:bg-foreground/90 disabled:opacity-40 transition-colors">
-                    <PaperPlaneRight size={15} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <ConfirmDialog open={!!confirmDelete} title="Delete Message" message="Delete this message? This cannot be undone."
-        confirmLabel="Delete" destructive onConfirm={() => confirmDelete && handleDeleteComment(confirmDelete)} onCancel={() => setConfirmDelete(null)} />
-      <ConfirmDialog open={!!confirmEdit} title="Save Changes" message="Save changes to this message?"
-        confirmLabel="Confirm" onConfirm={() => confirmEdit && handleEditComment(confirmEdit)} onCancel={() => setConfirmEdit(null)} />
+      <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
+      <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
     </div>
   );
 }

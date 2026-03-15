@@ -21,11 +21,9 @@ function getMainTab(pathname: string): MainTab {
 
 const sectionLabelClass = "text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" as const;
 const sectionLabelColor = { color: "#9A9A9A" };
-
 const navItemBase = "flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors";
 const navItemActive = `${navItemBase} bg-selected text-foreground`;
 const navItemInactive = `${navItemBase} text-muted-foreground hover:bg-selected hover:text-foreground`;
-
 const iconBtnClass = "flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-[hsl(0_0%_88%)] transition-colors";
 
 export function NavPanel() {
@@ -33,7 +31,6 @@ export function NavPanel() {
   const location = useLocation();
   const params = useParams<{ id: string }>();
   const [showAllEvents, setShowAllEvents] = useState(false);
-  const [showAllDepts, setShowAllDepts] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["events-task", "events-billing", "events-doc"]));
 
   const STORAGE_KEY = "zh-nav-width";
@@ -46,10 +43,7 @@ export function NavPanel() {
   });
   const [isResizing, setIsResizing] = useState(false);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => { e.preventDefault(); setIsResizing(true); }, []);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -64,19 +58,13 @@ export function NavPanel() {
     const handleMouseUp = () => setIsResizing(false);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
+    return () => { document.removeEventListener("mousemove", handleMouseMove); document.removeEventListener("mouseup", handleMouseUp); };
   }, [isResizing]);
 
   const mainTab = getMainTab(location.pathname);
-
   const selectedEventId = params.id || (location.pathname.startsWith("/events/") ? location.pathname.split("/")[2] : null);
   const visibleEvents = showAllEvents ? events : events.slice(0, 4);
-  const deptEventId = selectedEventId || events[0]?.id;
-  const depts = deptEventId ? getDeptsByEvent(deptEventId) : [];
-  const visibleDepts = showAllDepts ? depts : depts.slice(0, 8);
+  const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
 
   const toggleSection = (key: string) => {
     setExpandedSections(prev => {
@@ -86,13 +74,11 @@ export function NavPanel() {
     });
   };
 
-  const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
-
   return (
     <div id="zh-nav-panel" className="relative flex-shrink-0" style={{ width }}>
       <aside className="h-full overflow-y-auto bg-nav-panel" style={{ width }}>
         <div className="p-4 space-y-5">
-          {/* ===== HOME TAB ===== */}
+          {/* ===== HOME TAB — Events only, no departments ===== */}
           {mainTab === "home" && (
             <>
               <div>
@@ -113,12 +99,15 @@ export function NavPanel() {
                     return (
                       <NavLink key={ev.id} to={`/events/${ev.id}`}
                         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${isSelected ? "bg-selected text-foreground" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
-                        <div className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                          style={{ backgroundColor: ev.status === "active" ? "#e85d04" : ev.status === "planning" ? "#3b82f6" : "#9ca3af" }}>
-                          {initials}
-                        </div>
+                        {ev.image_url ? (
+                          <img src={ev.image_url} alt="" className="h-6 w-6 rounded-md object-cover shrink-0" />
+                        ) : (
+                          <div className="h-6 w-6 rounded-md flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                            style={{ backgroundColor: ev.status === "active" ? "#e85d04" : ev.status === "planning" ? "#3b82f6" : "#9ca3af" }}>
+                            {initials}
+                          </div>
+                        )}
                         <span className="truncate flex-1">{ev.name}</span>
-                        <StatusBadge status={ev.status} />
                       </NavLink>
                     );
                   })}
@@ -127,27 +116,6 @@ export function NavPanel() {
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <DotsThreeOutline size={12} weight="fill" />
                       {showAllEvents ? "Show less" : "More"}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>DEPARTMENTS</p>
-                  <button className={iconBtnClass}><Plus size={12} weight="bold" /></button>
-                </div>
-                <div className="space-y-0.5">
-                  {visibleDepts.map(dept => (
-                    <NavLink key={dept.id} to={`/departments/${encodeURIComponent(dept.name)}`} className={navItemInactive}>
-                      <Hash size={13} className="shrink-0" />
-                      <span className="truncate">{dept.name}</span>
-                    </NavLink>
-                  ))}
-                  {depts.length > 8 && (
-                    <button onClick={() => setShowAllDepts(!showAllDepts)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      <DotsThreeOutline size={12} weight="fill" />
-                      {showAllDepts ? "Show less" : "More"}
                     </button>
                   )}
                 </div>
@@ -178,13 +146,6 @@ export function NavPanel() {
                     ))}
                   </div>
                 )}
-              </div>
-              <div>
-                <p className={sectionLabelClass} style={sectionLabelColor}>FILTERS</p>
-                <div className="space-y-0.5">
-                  <button className={`${navItemInactive} w-full text-left`}><Funnel size={14} /> Status</button>
-                  <button className={`${navItemInactive} w-full text-left`}><Funnel size={14} /> Priority</button>
-                </div>
               </div>
             </>
           )}
