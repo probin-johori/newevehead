@@ -18,6 +18,7 @@ import DocumentsPage from "@/pages/Documents";
 import TeamsPage from "@/pages/Teams";
 import SettingsPage from "@/pages/Settings";
 import DepartmentsPage from "@/pages/Departments";
+import DeptEventDetailPage from "@/pages/DeptEventDetail";
 import NotificationsPage from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
 
