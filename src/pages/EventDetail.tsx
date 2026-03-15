@@ -17,6 +17,14 @@ import { EventImageUpload } from "@/components/EventImageUpload";
 
 type Tab = "overview" | "departments" | "tasks" | "billing" | "budget" | "documents";
 
+interface AddTaskForm {
+  title: string;
+  dept_id: string;
+  assignee_id: string;
+  priority: string;
+  deadline: string;
+}
+
 const priorityConfig: Record<string, { color: string; label: string }> = {
   urgent: { color: "text-red-600", label: "Urgent" },
   high: { color: "text-amber-600", label: "High" },
