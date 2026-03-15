@@ -239,7 +239,7 @@ export function TopBar() {
                   </button>
                 </div>
                 <div className="border-t border-stroke pt-1">
-                  <button onClick={() => { setProfileOpen(false); logout(); navigate("/login"); }}
+                  <button onClick={async () => { setProfileOpen(false); await signOut(); navigate("/login"); }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-selected transition-colors">
                     <SignOut size={15} /> Log Out
                   </button>
