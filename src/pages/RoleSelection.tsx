@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMockData, Role } from "@/context/MockDataContext";
+import { useAuth, Role } from "@/context/AuthContext";
 import { ShieldCheck, Users, UserGear, User } from "@phosphor-icons/react";
+import { toast } from "@/hooks/use-toast";
 
 const roles: { role: Role; icon: typeof ShieldCheck; title: string; desc: string }[] = [
   { role: "sa", icon: ShieldCheck, title: "Super Admin (SA)", desc: "Full system access, billing & analytics" },
@@ -10,12 +12,19 @@ const roles: { role: Role; icon: typeof ShieldCheck; title: string; desc: string
 ];
 
 export default function RoleSelectionPage() {
-  const { selectRole } = useMockData();
+  const { selectRole } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleSelect = (role: Role) => {
-    selectRole(role);
-    navigate("/dashboard");
+  const handleSelect = async (role: Role) => {
+    setLoading(true);
+    const { error } = await selectRole(role);
+    setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error, variant: "destructive" });
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -30,7 +39,8 @@ export default function RoleSelectionPage() {
             <button
               key={r.role}
               onClick={() => handleSelect(r.role)}
-              className="group flex flex-col items-start gap-3 rounded-xl border border-stroke bg-card p-6 text-left transition-all hover:border-accent hover:bg-selected"
+              disabled={loading}
+              className="group flex flex-col items-start gap-3 rounded-xl border border-stroke bg-card p-6 text-left transition-all hover:border-accent hover:bg-selected disabled:opacity-50"
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-foreground group-hover:bg-accent group-hover:text-white transition-colors">
                 <r.icon size={20} />

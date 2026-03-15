@@ -3,7 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { MockDataProvider, useMockData } from "@/context/MockDataContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { MockDataProvider } from "@/context/MockDataContext";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/Login";
 import SignupPage from "@/pages/Signup";
@@ -23,20 +24,23 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, hasSelectedRole } = useMockData();
+  const { isAuthenticated, hasSelectedRole, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!hasSelectedRole) return <Navigate to="/onboarding/role" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
-  const { isAuthenticated } = useMockData();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
 
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/events/e1" /> : <LoginPage />} />
       <Route path="/signup" element={isAuthenticated ? <Navigate to="/events/e1" /> : <SignupPage />} />
-      <Route path="/onboarding/role" element={<RoleSelectionPage />} />
+      <Route path="/onboarding/role" element={isAuthenticated ? <RoleSelectionPage /> : <Navigate to="/login" replace />} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/events/e1" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
@@ -58,15 +62,17 @@ function AppRoutes() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <MockDataProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </TooltipProvider>
-    </MockDataProvider>
+    <AuthProvider>
+      <MockDataProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </MockDataProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

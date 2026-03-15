@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MagnifyingGlass, Bell, Check, CaretDown, GearSix, SignOut, User, Plus, CheckCircle } from "@phosphor-icons/react";
 import { useMockData } from "@/context/MockDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
-  const { getUserNotifications, setNotifications, notifications, currentUser, logout, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { getUserNotifications, setNotifications, notifications, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { signOut, profile: authProfile } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
@@ -237,7 +239,7 @@ export function TopBar() {
                   </button>
                 </div>
                 <div className="border-t border-stroke pt-1">
-                  <button onClick={() => { setProfileOpen(false); logout(); navigate("/login"); }}
+                  <button onClick={async () => { setProfileOpen(false); await signOut(); navigate("/login"); }}
                     className="flex w-full items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-selected transition-colors">
                     <SignOut size={15} /> Log Out
                   </button>
