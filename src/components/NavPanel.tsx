@@ -78,7 +78,7 @@ export function NavPanel() {
     <div id="zh-nav-panel" className="relative flex-shrink-0" style={{ width }}>
       <aside className="h-full overflow-y-auto bg-nav-panel" style={{ width }}>
         <div className="p-4 space-y-5">
-          {/* ===== HOME TAB — Events only, no departments ===== */}
+          {/* ===== HOME TAB ===== */}
           {mainTab === "home" && (
             <>
               <div>
@@ -174,7 +174,7 @@ export function NavPanel() {
             </>
           )}
 
-          {/* ===== BILLING TAB ===== */}
+          {/* ===== BILLING TAB — cleaned: no status sub-items ===== */}
           {mainTab === "billing" && (
             <>
               <div>
@@ -199,44 +199,19 @@ export function NavPanel() {
                   </div>
                 )}
               </div>
-              <div className="space-y-0.5">
-                <NavLink to="/billing?status=pending" className={navItemInactive}><HourglassSimple size={14} /> Pending</NavLink>
-                <NavLink to="/billing?status=settled" className={navItemInactive}><CheckCircle size={14} /> Paid</NavLink>
-                <NavLink to="/billing?status=rejected" className={navItemInactive}><XCircle size={14} /> Rejected</NavLink>
-              </div>
             </>
           )}
 
-          {/* ===== DOCUMENT TAB ===== */}
+          {/* ===== DOCUMENT TAB — cleaned: only All Documents ===== */}
           {mainTab === "document" && (
-            <>
-              <div>
-                <p className={sectionLabelClass} style={sectionLabelColor}>DOCUMENTS</p>
-                <div className="space-y-0.5">
-                  <NavLink to="/documents" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
-                    <FolderOpen size={14} /> All Documents
-                  </NavLink>
-                </div>
-              </div>
-              <div>
-                <button onClick={() => toggleSection("events-doc")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
-                  {expandedSections.has("events-doc") ? <CaretDown size={10} /> : <CaretRight size={10} />} BY EVENT
-                </button>
-                {expandedSections.has("events-doc") && (
-                  <div className="space-y-0.5 pl-1">
-                    {events.map(ev => (
-                      <NavLink key={ev.id} to={`/documents?event=${ev.id}`} className={`${navItemInactive} truncate`}>
-                        <span className="truncate">{ev.name}</span>
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div>
+              <p className={sectionLabelClass} style={sectionLabelColor}>DOCUMENTS</p>
               <div className="space-y-0.5">
-                <NavLink to="/documents?view=recent" className={navItemInactive}><Clock size={14} /> Recently Added</NavLink>
-                <NavLink to="/documents?view=mine" className={navItemInactive}><Upload size={14} /> My Uploads</NavLink>
+                <NavLink to="/documents" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
+                  <FolderOpen size={14} /> All Documents
+                </NavLink>
               </div>
-            </>
+            </div>
           )}
 
           {/* ===== TEAM TAB ===== */}

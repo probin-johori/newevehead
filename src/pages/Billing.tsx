@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useMockData, formatINRShort, formatDate } from "@/context/MockDataContext";
+import { useMockData, formatINRShort, formatDate, formatTimeAgo } from "@/context/MockDataContext";
+import type { Bill, BillStatus } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { FileText, X, Plus, Check, Download, Trash, PencilSimple } from "@phosphor-icons/react";
+import { FileText, X, Plus, Check, Download, Trash, PencilSimple, PaperPlaneRight } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 
-const billStatusMap: Record<string, string> = {
-  pending: "pending",
-  "dept-verified": "pending",
-  "ca-approved": "pending",
-  settled: "paid",
-  rejected: "rejected",
-};
+const BILL_STATUSES: { key: string; label: string }[] = [
+  { key: "pending", label: "Pending" },
+  { key: "settled", label: "Paid" },
+  { key: "on-hold", label: "On Hold" },
+  { key: "rejected", label: "Rejected" },
+];
 
 export default function BillingPage() {
-  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills } = useMockData();
+  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills, departments, profiles, billEditLogs, setBillEditLogs, taskComments, setTaskComments } = useMockData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
@@ -26,6 +26,20 @@ export default function BillingPage() {
   const [selectedBill, setSelectedBill] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [detailTab, setDetailTab] = useState<"details" | "discussion" | "history">("details");
+
+  // Add billing form state
+  const [addForm, setAddForm] = useState({
+    description: "", vendor_name: "", amount: "", category: "",
+    event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null as File | null,
+  });
+
+  // Discussion state
+  const [newComment, setNewComment] = useState("");
+  const [editingComment, setEditingComment] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
+  const [confirmDeleteComment, setConfirmDeleteComment] = useState<string | null>(null);
+  const [confirmEditComment, setConfirmEditComment] = useState<string | null>(null);
 
   useScrollLock(!!selectedBill || showAddModal);
 
@@ -35,6 +49,10 @@ export default function BillingPage() {
     if (s) setStatusFilter(s);
     if (e) setEventFilter(e);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedBill) setDetailTab("details");
+  }, [selectedBill]);
 
   if (isFreePlan) {
     return (
@@ -52,6 +70,7 @@ export default function BillingPage() {
       if (statusFilter === "pending" && !["pending", "dept-verified", "ca-approved"].includes(b.status)) return false;
       if (statusFilter === "settled" && b.status !== "settled") return false;
       if (statusFilter === "rejected" && b.status !== "rejected") return false;
+      if (statusFilter === "on-hold" && (b as any).status !== "on-hold") return false;
     }
     if (eventFilter !== "all" && b.event_id !== eventFilter) return false;
     if (categoryFilter !== "all" && b.category !== categoryFilter) return false;
@@ -66,14 +85,22 @@ export default function BillingPage() {
 
   const bill = selectedBill ? bills.find(b => b.id === selectedBill) : null;
 
+  // Use taskComments as a shared comment store (bill comments use bill ID as task_id)
+  const billComments = bill ? taskComments.filter(c => c.task_id === `bill_${bill.id}`) : [];
+
   const handleMarkPaid = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
+    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as BillStatus, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
     toast({ title: "Marked as Paid" });
   };
 
   const handleReject = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "rejected" as const } : b));
+    setBills(bills.map(b => b.id === billId ? { ...b, status: "rejected" as BillStatus } : b));
     toast({ title: "Bill rejected" });
+  };
+
+  const handleOnHold = (billId: string) => {
+    setBills(bills.map(b => b.id === billId ? { ...b, status: "on-hold" as any } : b));
+    toast({ title: "Bill put on hold" });
   };
 
   const handleDelete = (billId: string) => {
@@ -81,6 +108,70 @@ export default function BillingPage() {
     setConfirmDelete(null);
     setSelectedBill(null);
     toast({ title: "Bill deleted" });
+  };
+
+  const handleAddBill = () => {
+    if (!addForm.description.trim() || !addForm.vendor_name.trim()) {
+      toast({ title: "Description and vendor are required", variant: "destructive" });
+      return;
+    }
+    if (!addForm.invoice_file) {
+      toast({ title: "Invoice attachment is mandatory", variant: "destructive" });
+      return;
+    }
+    const newBill: Bill = {
+      id: `b_new_${Date.now()}`,
+      event_id: addForm.event_id || events[0]?.id || "e1",
+      dept_id: "d1",
+      vendor_name: addForm.vendor_name,
+      description: addForm.description,
+      amount: parseFloat(addForm.amount) || 0,
+      advance_amount: 0,
+      bill_file_url: addForm.invoice_file?.name || "",
+      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
+      status: addForm.status as BillStatus,
+      advance_status: "not-given",
+      submitted_by: currentUser.id,
+      dept_verified_by: null,
+      ca_approved_by: null,
+      settled_by: null,
+      submitted_at: new Date().toISOString(),
+      dept_verified_at: null,
+      ca_approved_at: null,
+      settled_at: null,
+      category: addForm.category || undefined,
+      due_date: addForm.due_date || undefined,
+      invoice_file: addForm.invoice_file?.name,
+    };
+    setBills([...bills, newBill]);
+    setShowAddModal(false);
+    setAddForm({ description: "", vendor_name: "", amount: "", category: "", event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null });
+    toast({ title: "Billing item added" });
+  };
+
+  // Discussion handlers
+  const handleSubmitComment = () => {
+    if (!newComment.trim() || !bill) return;
+    setTaskComments([...taskComments, {
+      id: `bc_${Date.now()}`, task_id: `bill_${bill.id}`, author_id: currentUser.id,
+      body: newComment.trim(), created_at: new Date().toISOString(),
+    }]);
+    setNewComment("");
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    setTaskComments(taskComments.filter(c => c.id !== commentId));
+    setConfirmDeleteComment(null);
+    toast({ title: "Comment deleted" });
+  };
+
+  const handleEditComment = (commentId: string) => {
+    if (!editBody.trim()) return;
+    setTaskComments(taskComments.map(c => c.id === commentId ? { ...c, body: editBody.trim() } : c));
+    setEditingComment(null);
+    setEditBody("");
+    setConfirmEditComment(null);
+    toast({ title: "Comment updated" });
   };
 
   const exportCSV = () => {
@@ -140,6 +231,7 @@ export default function BillingPage() {
           <option value="all">All Status</option>
           <option value="pending">Pending</option>
           <option value="settled">Paid</option>
+          <option value="on-hold">On Hold</option>
           <option value="rejected">Rejected</option>
         </select>
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
@@ -151,18 +243,18 @@ export default function BillingPage() {
 
       {/* Billing Table */}
       <div className="rounded-xl border border-stroke overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="border-b border-stroke">
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-10">#</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Item / Description</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due Date</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Paid Date</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[28%]">Item / Description</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[14%]">Vendor</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">Category</th>
+              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">Amount</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">Status</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">Due Date</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[10%]">Paid Date</th>
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-[8%]">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -174,10 +266,10 @@ export default function BillingPage() {
                   onClick={() => setSelectedBill(b.id)}>
                   <td className="px-4 py-3 text-muted-foreground">{idx + 1}</td>
                   <td className="px-4 py-3">
-                    <p className="font-medium">{b.description}</p>
-                    <p className="text-xs text-muted-foreground">{ev?.name}</p>
+                    <p className="font-medium truncate">{b.description}</p>
+                    <p className="text-xs text-muted-foreground truncate">{ev?.name}</p>
                   </td>
-                  <td className="px-4 py-3">{b.vendor_name}</td>
+                  <td className="px-4 py-3 truncate">{b.vendor_name}</td>
                   <td className="px-4 py-3">
                     {b.category && <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{b.category}</span>}
                   </td>
@@ -203,46 +295,143 @@ export default function BillingPage() {
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
             <span className="text-3xl mb-3">💳</span>
-            <p className="text-sm text-muted-foreground">No bills match your filters.</p>
+            <p className="text-sm font-medium mb-1">No billing items found</p>
+            <p className="text-sm text-muted-foreground mb-4">Try adjusting your filters or add a new item.</p>
+            <button onClick={() => setShowAddModal(true)} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+              <Plus size={14} className="inline mr-1" /> Add Billing Item
+            </button>
           </div>
         )}
       </div>
 
-      {/* Bill Detail Drawer */}
+      {/* Bill Detail Drawer with Tabs */}
       {bill && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setSelectedBill(null)} />
-          <div className="fixed right-0 top-0 z-50 h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{bill.vendor_name}</h3>
-              <button onClick={() => setSelectedBill(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
-            </div>
-            <p className="text-sm text-muted-foreground">{bill.description}</p>
-            <div className="grid grid-cols-2 gap-4 text-sm border-t border-stroke pt-4">
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Amount</p><p className="font-semibold text-lg">{formatINRShort(bill.amount)}</p></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Advance</p><p className="font-semibold text-lg">{formatINRShort(bill.advance_amount)}</p></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</p><StatusBadge status={bill.status} /></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p><button onClick={() => { setSelectedBill(null); navigate(`/events/${bill.event_id}`); }} className="text-sm hover:text-accent">{getEvent(bill.event_id)?.name}</button></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name}</p></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Invoice</p><p>{bill.invoice_number}</p></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted</p><p>{new Date(bill.submitted_at).toLocaleDateString()}</p></div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted By</p>
-                {(() => { const s = getProfile(bill.submitted_by); return s ? <div className="flex items-center gap-1.5"><UserAvatar name={s.name} color={s.avatar_color} size="sm" /><span>{s.name}</span></div> : null; })()}
+          <div className="fixed right-0 top-0 z-50 h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+            onKeyDown={e => e.key === "Escape" && setSelectedBill(null)}>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">{bill.vendor_name}</h3>
+                <button onClick={() => setSelectedBill(null)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
-            </div>
-            {bill.bill_file_url && (
-              <div className="flex items-center gap-1.5 text-sm text-accent cursor-pointer hover:underline border-t border-stroke pt-3">
-                <FileText size={14} /> {bill.bill_file_url}
+              <p className="text-sm text-muted-foreground">{bill.description}</p>
+
+              {/* Tabs */}
+              <div className="flex gap-0 border-b border-stroke">
+                {(["details", "discussion", "history"] as const).map(t => (
+                  <button key={t} onClick={() => setDetailTab(t)}
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${detailTab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                    {t === "details" ? "Details" : t === "discussion" ? `Discussion (${billComments.length})` : "History"}
+                  </button>
+                ))}
               </div>
-            )}
-            <div className="flex gap-2 border-t border-stroke pt-3">
-              {bill.status !== "settled" && bill.status !== "rejected" && (
-                <button onClick={() => { handleMarkPaid(bill.id); setSelectedBill(null); }}
-                  className="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700">Mark as Paid</button>
+
+              {/* Details Tab */}
+              {detailTab === "details" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Amount</p><p className="font-semibold text-lg">{formatINRShort(bill.amount)}</p></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Advance</p><p className="font-semibold text-lg">{formatINRShort(bill.advance_amount)}</p></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</p><StatusBadge status={bill.status} /></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p><button onClick={() => { setSelectedBill(null); navigate(`/events/${bill.event_id}`); }} className="text-sm hover:text-accent">{getEvent(bill.event_id)?.name}</button></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name}</p></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Invoice</p><p>{bill.invoice_number}</p></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted</p><p>{new Date(bill.submitted_at).toLocaleDateString()}</p></div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Submitted By</p>
+                      {(() => { const s = getProfile(bill.submitted_by); return s ? <div className="flex items-center gap-1.5"><UserAvatar name={s.name} color={s.avatar_color} size="sm" /><span>{s.name}</span></div> : null; })()}
+                    </div>
+                  </div>
+                  {bill.bill_file_url && (
+                    <div className="flex items-center gap-1.5 text-sm text-accent cursor-pointer hover:underline border-t border-stroke pt-3">
+                      <FileText size={14} /> {bill.bill_file_url}
+                    </div>
+                  )}
+                  <div className="flex gap-2 border-t border-stroke pt-3">
+                    {bill.status !== "settled" && bill.status !== "rejected" && (
+                      <>
+                        <button onClick={() => { handleMarkPaid(bill.id); setSelectedBill(null); }}
+                          className="rounded-full bg-emerald-600 text-white px-4 py-2 text-sm font-medium hover:bg-emerald-700">Mark as Paid</button>
+                        <button onClick={() => { handleOnHold(bill.id); }}
+                          className="rounded-full bg-secondary text-foreground px-4 py-2 text-sm font-medium hover:bg-selected">On Hold</button>
+                        <button onClick={() => { handleReject(bill.id); setSelectedBill(null); }}
+                          className="rounded-full bg-red-50 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-100">Reject</button>
+                      </>
+                    )}
+                    <button onClick={() => setConfirmDelete(bill.id)}
+                      className="rounded-full bg-red-50 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-100 ml-auto">Delete</button>
+                  </div>
+                </>
               )}
-              <button onClick={() => setConfirmDelete(bill.id)}
-                className="rounded-full bg-red-50 text-red-600 px-4 py-2 text-sm font-medium hover:bg-red-100">Delete</button>
+
+              {/* Discussion Tab */}
+              {detailTab === "discussion" && (
+                <div className="space-y-4">
+                  {billComments.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No comments yet. Start the discussion.</p>}
+                  {billComments.map(c => {
+                    const author = getProfile(c.author_id);
+                    const canEdit = c.author_id === currentUser.id;
+                    const canDelete = c.author_id === currentUser.id || currentUser.role === "sa";
+                    return (
+                      <div key={c.id} className="flex gap-3">
+                        {author && <UserAvatar name={author.name} color={author.avatar_color} size="sm" />}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{author?.name}</span>
+                            <span className="text-[11px] text-muted-foreground">{formatTimeAgo(c.created_at)}</span>
+                            {canEdit && <button onClick={() => { setEditingComment(c.id); setEditBody(c.body); }} className="text-muted-foreground hover:text-foreground ml-auto"><PencilSimple size={13} /></button>}
+                            {canDelete && <button onClick={() => setConfirmDeleteComment(c.id)} className="text-muted-foreground hover:text-red-600"><Trash size={13} /></button>}
+                          </div>
+                          {editingComment === c.id ? (
+                            <div className="flex gap-2 mt-1">
+                              <input value={editBody} onChange={e => setEditBody(e.target.value)}
+                                onKeyDown={e => { if (e.key === "Enter") setConfirmEditComment(c.id); }}
+                                className="flex-1 rounded-lg border border-stroke bg-secondary px-3 py-1.5 text-sm focus:outline-none" />
+                              <button onClick={() => setConfirmEditComment(c.id)} className="rounded-full bg-foreground px-3 py-1.5 text-xs text-background font-medium">Save</button>
+                              <button onClick={() => { setEditingComment(null); setEditBody(""); }} className="text-xs text-muted-foreground">Cancel</button>
+                            </div>
+                          ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{c.body}</p>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex gap-3 pt-2 border-t border-stroke">
+                    <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
+                    <div className="flex-1 flex gap-2">
+                      <input value={newComment} onChange={e => setNewComment(e.target.value)}
+                        onKeyDown={e => e.key === "Enter" && handleSubmitComment()}
+                        placeholder="Write a comment..."
+                        className="flex-1 rounded-full border border-stroke bg-secondary px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none" />
+                      <button onClick={handleSubmitComment} disabled={!newComment.trim()}
+                        className="rounded-full bg-foreground px-3 py-2 text-background hover:bg-foreground/90 disabled:opacity-40 transition-colors">
+                        <PaperPlaneRight size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* History Tab */}
+              {detailTab === "history" && (
+                <div className="space-y-3">
+                  {billEditLogs.filter(l => l.bill_id === bill.id).length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-6">No edit history.</p>
+                  )}
+                  {billEditLogs.filter(l => l.bill_id === bill.id).map(log => {
+                    const user = getProfile(log.user_id);
+                    return (
+                      <div key={log.id} className="flex items-start gap-3 text-sm">
+                        {user && <UserAvatar name={user.name} color={user.avatar_color} size="sm" />}
+                        <div>
+                          <p><span className="font-medium">{user?.name}</span> changed <span className="font-medium">{log.field}</span> from <span className="text-muted-foreground">{log.old_value}</span> → <span className="font-medium">{log.new_value}</span></p>
+                          <p className="text-[11px] text-muted-foreground">{formatTimeAgo(log.created_at)}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -253,49 +442,77 @@ export default function BillingPage() {
         <>
           <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddModal(false)} />
           <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
-            <div className="w-full max-w-lg rounded-xl bg-card border border-stroke p-6 shadow-[0_8px_40px_rgba(0,0,0,0.15)] space-y-4">
+            <div className="w-full max-w-lg rounded-xl bg-card border border-stroke p-6 shadow-[0_8px_40px_rgba(0,0,0,0.15)] space-y-4 max-h-[90vh] overflow-y-auto"
+              onKeyDown={e => e.key === "Escape" && setShowAddModal(false)}>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Add Billing Item</h3>
                 <button onClick={() => setShowAddModal(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <input className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Item description" />
+                  <label className="text-sm font-medium">Description <span className="text-destructive">*</span></label>
+                  <input value={addForm.description} onChange={e => setAddForm(p => ({ ...p, description: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="Item description" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Vendor</label>
-                  <input className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Vendor name" />
+                  <label className="text-sm font-medium">Vendor <span className="text-destructive">*</span></label>
+                  <input value={addForm.vendor_name} onChange={e => setAddForm(p => ({ ...p, vendor_name: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="Vendor name" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Amount (₹)</label>
-                  <input type="number" className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="0" />
+                  <label className="text-sm font-medium">Amount (₹) <span className="text-destructive">*</span></label>
+                  <input type="number" value={addForm.amount} onChange={e => setAddForm(p => ({ ...p, amount: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="0" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Category</label>
-                  <input className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Equipment" />
+                  <input value={addForm.category} onChange={e => setAddForm(p => ({ ...p, category: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="e.g. Equipment" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Event</label>
-                  <select className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                  <select value={addForm.event_id} onChange={e => setAddForm(p => ({ ...p, event_id: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                    <option value="">Select event</option>
                     {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Due Date</label>
-                  <input type="date" className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                  <input type="date" value={addForm.due_date} onChange={e => setAddForm(p => ({ ...p, due_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Status</label>
-                  <select className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
-                    <option value="pending">Pending</option>
-                    <option value="settled">Paid</option>
+                  <select value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                    {BILL_STATUSES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium">Invoice Attachment <span className="text-destructive">*</span></label>
+                  <label className="mt-1 flex items-center justify-center w-full h-20 border-2 border-dashed border-stroke rounded-lg bg-secondary hover:bg-selected transition-colors cursor-pointer">
+                    <input type="file" accept="image/*,.pdf,.doc,.docx" className="hidden"
+                      onChange={e => setAddForm(p => ({ ...p, invoice_file: e.target.files?.[0] || null }))} />
+                    {addForm.invoice_file ? (
+                      <div className="flex items-center gap-2 text-sm">
+                        <FileText size={16} className="text-accent" />
+                        <span className="font-medium">{addForm.invoice_file.name}</span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Click to upload invoice (required)</p>
+                    )}
+                  </label>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium">Notes</label>
+                  <textarea value={addForm.notes} onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" rows={2} placeholder="Additional notes" />
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowAddModal(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
-                <button onClick={() => { setShowAddModal(false); toast({ title: "Billing item added" }); }}
+                <button onClick={handleAddBill}
                   className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Save</button>
               </div>
             </div>
@@ -305,6 +522,10 @@ export default function BillingPage() {
 
       <ConfirmDialog open={!!confirmDelete} title="Delete Bill" message="Delete this billing item? This cannot be undone."
         confirmLabel="Delete" destructive onConfirm={() => confirmDelete && handleDelete(confirmDelete)} onCancel={() => setConfirmDelete(null)} />
+      <ConfirmDialog open={!!confirmDeleteComment} title="Delete Comment" message="Delete this comment? This cannot be undone."
+        confirmLabel="Delete" destructive onConfirm={() => confirmDeleteComment && handleDeleteComment(confirmDeleteComment)} onCancel={() => setConfirmDeleteComment(null)} />
+      <ConfirmDialog open={!!confirmEditComment} title="Save Changes" message="Save changes to this comment?"
+        confirmLabel="Confirm" onConfirm={() => confirmEditComment && handleEditComment(confirmEditComment)} onCancel={() => setConfirmEditComment(null)} />
     </div>
   );
 }
