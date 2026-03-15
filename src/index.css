@@ -73,6 +73,34 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Focus visible for accessibility */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+
+  /* Minimum touch targets on mobile */
+  @media (max-width: 767px) {
+    button, a, [role="button"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Full-screen modals on mobile */
+    [data-modal="true"],
+    .fixed.max-w-md,
+    .fixed.max-w-lg,
+    .fixed.max-w-xl {
+      max-width: 100% !important;
+      width: 100% !important;
+      border-radius: 0 !important;
+    }
+  }
+}
+
+/* Safe area for bottom nav */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Global dropdown/select polish */
@@ -100,5 +128,10 @@
   [role="option"],
   [role="menuitem"] {
     padding: 0.5rem 1rem 0.5rem 0.75rem !important;
+  }
+
+  /* Consistent card/modal border radius */
+  .rounded-xl {
+    border-radius: 12px;
   }
 }
