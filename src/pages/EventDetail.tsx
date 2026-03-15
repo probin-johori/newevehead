@@ -458,42 +458,63 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ DEPARTMENTS — with budget per event & sidesheet ============ */}
+      {/* ============ DEPARTMENTS — with add & budget ============ */}
       {tab === "departments" && (
-        <div className="rounded-xl border border-stroke overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-stroke">
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
-            </tr></thead>
-            <tbody>
-              {depts.map(d => {
-                const head = getProfile(d.head_id);
-                const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
-                const remaining = d.allocated_budget - d.spent;
-                return (
-                  <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
-                    onClick={() => setDeptSheet(d.id)}>
-                    <td className="px-4 py-3 font-medium">{d.name}</td>
-                    <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
-                        <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{depts.length} departments</p>
+            <div className="relative">
+              <button onClick={() => setShowAddDept(!showAddDept)}
+                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+                <Plus size={14} /> Add Department
+              </button>
+              {showAddDept && (
+                <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                  {availableDepts.length > 0 ? availableDepts.map(name => (
+                    <button key={name} onClick={() => handleAddDeptToEvent(name)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-selected transition-colors">{name}</button>
+                  )) : (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already added</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-stroke overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-stroke">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
+              </tr></thead>
+              <tbody>
+                {depts.map(d => {
+                  const head = getProfile(d.head_id);
+                  const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
+                  const remaining = d.allocated_budget - d.spent;
+                  return (
+                    <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
+                      onClick={() => setDeptSheet(d.id)}>
+                      <td className="px-4 py-3 font-medium">{d.name}</td>
+                      <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
+                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
