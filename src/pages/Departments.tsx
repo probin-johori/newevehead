@@ -164,7 +164,7 @@ export default function DepartmentsPage() {
             const deptForEv = deptInstances.find(d => d.event_id === ev.id);
             const initials = ev.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
             return (
-              <button key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}
+              <button key={ev.id} onClick={() => navigate(`/departments/${encodeURIComponent(deptName)}/events/${ev.id}`)}
                 className="rounded-xl border border-stroke p-5 text-left hover:bg-selected transition-colors">
                 {ev.image_url ? (
                   <img src={ev.image_url} alt="" className="h-16 w-full rounded-lg object-cover mb-3" />

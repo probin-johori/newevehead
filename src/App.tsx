@@ -54,6 +54,7 @@ function AppRoutes() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="departments" element={<DepartmentsPage />} />
         <Route path="departments/:name" element={<DepartmentsPage />} />
+        <Route path="departments/:deptName/events/:eventId" element={<DeptEventDetailPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
