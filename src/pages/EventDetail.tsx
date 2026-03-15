@@ -359,52 +359,102 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ TASKS — collapsed groups by dept ============ */}
+      {/* ============ TASKS — grouped by dept, matching screenshot layout ============ */}
       {tab === "tasks" && (
-        <div className="space-y-4">
-          {tasksByDept.map(({ dept, tasks: dTasks }) => {
-            const isCollapsed = collapsedGroups.has(dept.id);
-            return (
-              <div key={dept.id} className="rounded-xl border border-stroke overflow-hidden">
-                <button onClick={() => toggleGroup(dept.id)} className="flex items-center gap-2 w-full px-4 py-3 bg-secondary/50 hover:bg-selected transition-colors text-left">
-                  {isCollapsed ? <CaretRight size={14} /> : <CaretDown size={14} />}
-                  <span className="text-sm font-semibold">{dept.name}</span>
-                  <span className="text-xs text-muted-foreground">({dTasks.length})</span>
+        <div className="space-y-6">
+          {tasksByDept.map(({ dept, tasks: dTasks }) => (
+            <div key={dept.id}>
+              {/* Department group header */}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold">{dept.name}</h3>
+                <button onClick={() => setShowAddTask(showAddTask === dept.id ? null : dept.id)}
+                  className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background hover:bg-foreground/90 transition-colors">
+                  Add Task
                 </button>
-                {!isCollapsed && (
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-stroke">
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                    </tr></thead>
-                    <tbody>
-                      {dTasks.map(t => {
-                        const assignee = getProfile(t.assignee_id);
-                        const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
-                        const pc = priorityConfig[t.priority] || priorityConfig.normal;
-                        const doneCount = t.subtasks.filter(s => s.completed).length;
-                        return (
-                          <tr key={t.id} className="border-b border-stroke last:border-0 hover:bg-selected cursor-pointer transition-colors"
-                            onClick={() => setSelectedTask(t.id)}>
-                            <td className="px-4 py-3 font-medium">{t.title}</td>
-                            <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
-                            <td className="px-4 py-3"><div className="flex items-center gap-1"><Flag size={13} weight="fill" className={pc.color} /><span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span></div></td>
-                            <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                            <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
-                            <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
               </div>
-            );
-          })}
+              {/* Table header */}
+              <div className="rounded-xl border border-stroke overflow-hidden">
+                <table className="w-full text-sm table-fixed">
+                  <thead><tr className="border-b border-stroke">
+                    <th className="w-[5%] px-2 py-2.5" />
+                    <th className="w-[28%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                    <th className="w-[14%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
+                    <th className="w-[8%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                    <th className="w-[12%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="w-[3%] px-2 py-2.5" />
+                  </tr></thead>
+                  <tbody>
+                    {dTasks.map(t => {
+                      const assignee = getProfile(t.assignee_id);
+                      const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
+                      const pc = priorityConfig[t.priority] || priorityConfig.normal;
+                      const doneCount = t.subtasks.filter(s => s.completed).length;
+                      return (
+                        <tr key={t.id} className="border-b border-stroke last:border-0 hover:bg-selected cursor-pointer transition-colors"
+                          onClick={() => setSelectedTask(t.id)}>
+                          <td className="px-2 py-3 text-center">
+                            <CaretDown size={14} className="text-muted-foreground mx-auto" />
+                          </td>
+                          <td className="px-4 py-3 font-medium truncate">{t.title}</td>
+                          <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>
+                          <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
+                          <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
+                          <td className="px-4 py-3"><div className="flex items-center gap-1"><Flag size={13} weight="fill" className={pc.color} /><span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span></div></td>
+                          <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                          <td className="px-2 py-3 text-center">
+                            <CaretDown size={14} className="text-muted-foreground mx-auto rotate-[-90deg]" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Inline add task row */}
+                    {showAddTask === dept.id && (
+                      <tr className="border-b border-stroke bg-secondary/30">
+                        <td className="px-2 py-2" />
+                        <td className="px-4 py-2" colSpan={2}>
+                          <input autoFocus value={addTaskForm.title} onChange={e => setAddTaskForm(f => ({ ...f, title: e.target.value }))}
+                            onKeyDown={e => e.key === "Enter" && handleAddTask(dept.id)}
+                            placeholder="Task name..." className="w-full bg-background border border-stroke rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <select value={addTaskForm.assignee_id} onChange={e => setAddTaskForm(f => ({ ...f, assignee_id: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                            <option value="">Assign</option>
+                            {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-2">
+                          <input type="date" value={addTaskForm.deadline} onChange={e => setAddTaskForm(f => ({ ...f, deadline: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full" />
+                        </td>
+                        <td className="px-4 py-2" />
+                        <td className="px-4 py-2">
+                          <select value={addTaskForm.priority} onChange={e => setAddTaskForm(f => ({ ...f, priority: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-2" colSpan={2}>
+                          <div className="flex gap-1">
+                            <button onClick={() => handleAddTask(dept.id)} className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">Add</button>
+                            <button onClick={() => setShowAddTask(null)} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-medium">✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {dTasks.length === 0 && !showAddTask && <div className="text-center py-8 text-sm text-muted-foreground">No tasks yet</div>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
