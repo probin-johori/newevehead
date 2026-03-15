@@ -587,6 +587,9 @@ export default function EventDetailPage() {
 
       <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
       <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+      {showImageUpload && (
+        <EventImageUpload currentImage={event.image_url} onSelect={handleImageSelect} onClose={() => setShowImageUpload(false)} />
+      )}
     </div>
   );
 }
