@@ -69,7 +69,7 @@ export default function EventDetailPage() {
     }
   }, [event?.id]);
 
-  useScrollLock(!!selectedBill || !!deptSheet);
+  useScrollLock(!!selectedBill || !!deptSheet || showImageUpload);
 
   if (!event) return <div className="p-8 text-sm text-muted-foreground">Event not found</div>;
 
