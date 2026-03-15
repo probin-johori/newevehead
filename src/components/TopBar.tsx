@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MagnifyingGlass, Bell, Check, CaretDown, GearSix, SignOut, User, Plus, CheckCircle } from "@phosphor-icons/react";
 import { useMockData } from "@/context/MockDataContext";
+import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
-  const { getUserNotifications, setNotifications, notifications, currentUser, logout, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { getUserNotifications, setNotifications, notifications, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { signOut, profile: authProfile } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
