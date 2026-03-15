@@ -96,14 +96,57 @@ export default function EventDetailPage() {
   const doneTasks = evTasks.filter(t => t.status === "completed").length;
   const totalTasks = evTasks.length;
 
-  const tabs: { key: Tab; label: string; dot?: boolean }[] = [
+  const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
     { key: "departments", label: "Departments" },
-    { key: "tasks", label: "Tasks" },
-    { key: "billing", label: "Billing", dot: pendingBillCount > 0 },
+    { key: "tasks", label: "To-Dos" },
+    { key: "billing", label: "Billing" },
     { key: "budget", label: "Budget" },
     { key: "documents", label: "Documents" },
   ];
+
+  const handleAddTask = (deptId: string) => {
+    if (!addTaskForm.title.trim()) { toast({ title: "Task title is required", variant: "destructive" }); return; }
+    const newTask = {
+      id: `t_${Date.now()}`,
+      event_id: event.id,
+      dept_id: deptId,
+      title: addTaskForm.title.trim(),
+      description: "",
+      assignee_id: addTaskForm.assignee_id || currentUser.id,
+      deadline: addTaskForm.deadline || new Date().toISOString().split("T")[0],
+      priority: (addTaskForm.priority || "normal") as any,
+      status: "not-started" as const,
+      subtasks: [],
+      created_by: currentUser.id,
+      created_at: new Date().toISOString(),
+    };
+    setTasks([...allTasks, newTask]);
+    setAddTaskForm({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
+    setShowAddTask(null);
+    toast({ title: "Task added" });
+  };
+
+  const handleAddDeptToEvent = (deptName: string) => {
+    const exists = depts.find(d => d.name === deptName);
+    if (exists) { toast({ title: "Department already added", variant: "destructive" }); return; }
+    const newDept = {
+      id: `d_${Date.now()}`,
+      event_id: event.id,
+      name: deptName,
+      head_id: currentUser.id,
+      allocated_budget: 0,
+      spent: 0,
+      notes: "",
+    };
+    setDepartments([...departments, newDept]);
+    setShowAddDept(false);
+    toast({ title: `${deptName} added to event` });
+  };
+
+  const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
+  const existingDeptNames = new Set(depts.map(d => d.name));
+  const availableDepts = allDeptNames.filter(n => !existingDeptNames.has(n));
 
   const bill = selectedBill ? evBills.find(b => b.id === selectedBill) : null;
 
