@@ -168,7 +168,6 @@ export default function DepartmentsPage() {
   const deptMemberIds = new Set(deptInstances.flatMap(d => d.member_ids || []));
   const deptMembers = profiles.filter(p => deptMemberIds.has(p.id) || p.dept_name === deptName);
   const availableMembers = profiles.filter(p => !deptMemberIds.has(p.id) && p.dept_name !== deptName);
-  const [showAddMember, setShowAddMember] = useState(false);
 
   return (
     <div className="p-6 w-full">
