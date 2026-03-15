@@ -132,7 +132,42 @@ export default function DepartmentsPage() {
     { key: "tasks", label: "Tasks" },
     { key: "billing", label: "Billing" },
     { key: "documents", label: "Documents" },
+    { key: "members", label: "Members" },
   ];
+
+  const handleAddMember = (userId: string) => {
+    setDepartments(departments.map(d => {
+      if (d.name === deptName) {
+        const members = d.member_ids || [];
+        if (!members.includes(userId)) return { ...d, member_ids: [...members, userId] };
+      }
+      return d;
+    }));
+    toast({ title: "Member added" });
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    setDepartments(departments.map(d => {
+      if (d.name === deptName) {
+        return { ...d, member_ids: (d.member_ids || []).filter(id => id !== userId) };
+      }
+      return d;
+    }));
+    toast({ title: "Member removed" });
+  };
+
+  const handleSetHead = (userId: string) => {
+    setDepartments(departments.map(d => {
+      if (d.name === deptName) return { ...d, head_id: userId };
+      return d;
+    }));
+    toast({ title: "Department head updated" });
+  };
+
+  const deptMemberIds = new Set(deptInstances.flatMap(d => d.member_ids || []));
+  const deptMembers = profiles.filter(p => deptMemberIds.has(p.id) || p.dept_name === deptName);
+  const availableMembers = profiles.filter(p => !deptMemberIds.has(p.id) && p.dept_name !== deptName);
+  const [showAddMember, setShowAddMember] = useState(false);
 
   return (
     <div className="p-6 w-full">
