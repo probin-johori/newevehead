@@ -10,9 +10,10 @@ import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Flag, Plus, Eye, FileText, X, PencilSimple, ArrowRight,
-  CaretDown, CaretRight
+  CaretDown, CaretRight, ImageSquare
 } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
+import { EventImageUpload } from "@/components/EventImageUpload";
 
 type Tab = "overview" | "departments" | "tasks" | "billing" | "budget" | "documents";
 
@@ -46,6 +47,7 @@ export default function EventDetailPage() {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["all"]));
+  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -67,7 +69,7 @@ export default function EventDetailPage() {
     }
   }, [event?.id]);
 
-  useScrollLock(!!selectedBill || !!deptSheet);
+  useScrollLock(!!selectedBill || !!deptSheet || showImageUpload);
 
   if (!event) return <div className="p-8 text-sm text-muted-foreground">Event not found</div>;
 
@@ -105,6 +107,12 @@ export default function EventDetailPage() {
     setIsEditing(false);
   };
 
+  const handleImageSelect = (url: string) => {
+    setEvents(events.map(e => e.id === event.id ? { ...e, image_url: url } : e));
+    setShowImageUpload(false);
+    toast({ title: "Event image updated" });
+  };
+
   const handleApproveBill = (billId: string) => {
     setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
     toast({ title: "Bill approved" });
@@ -135,9 +143,23 @@ export default function EventDetailPage() {
         <span className="text-foreground">{event.name}</span>
       </p>
 
+      {/* Event Banner */}
+      {event.image_url && (
+        <div className="relative rounded-xl overflow-hidden mb-4 group">
+          <img src={event.image_url} alt={event.name} className="w-full h-40 object-cover" />
+          <button onClick={() => setShowImageUpload(true)}
+            className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+            <ImageSquare size={14} /> Change image
+          </button>
+        </div>
+      )}
+
       {/* Event Header */}
       <div className="flex items-center gap-3 mb-1">
-        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold">🎆</div>
+        {!event.image_url && (
+          <button onClick={() => setShowImageUpload(true)}
+            className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity" title="Add event image">🎆</button>
+        )}
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2">
@@ -565,6 +587,9 @@ export default function EventDetailPage() {
 
       <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
       <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
+      {showImageUpload && (
+        <EventImageUpload currentImage={event.image_url} onSelect={handleImageSelect} onClose={() => setShowImageUpload(false)} />
+      )}
     </div>
   );
 }

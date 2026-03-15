@@ -2,30 +2,37 @@ import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NavPanel } from "@/components/NavPanel";
 import { TopBar } from "@/components/TopBar";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 export default function AppLayout() {
   return (
     <div className="flex flex-col h-screen bg-page-bg overflow-hidden">
-      {/* Row 1: Header — full width, sticky */}
+      {/* Header */}
       <TopBar />
 
-      {/* Row 2: Sidebar + Content — fills remaining height */}
-      <div className="flex flex-1 min-h-0 px-3 pb-3 gap-3">
-        {/* Column 1: Floating black sidebar */}
-        <AppSidebar />
+      {/* Row 2: Sidebar + Content */}
+      <div className="flex flex-1 min-h-0 px-0 pb-0 gap-0 md:px-3 md:pb-3 md:gap-3">
+        {/* Sidebar — hidden on mobile */}
+        <div className="hidden md:block">
+          <AppSidebar />
+        </div>
 
-        {/* Column 2+3: Joined container (nav panel + main content) */}
-        <div className="flex flex-1 min-h-0 rounded-xl bg-background border border-stroke overflow-hidden">
-          {/* Column 2: Nav panel */}
-          <NavPanel />
-          {/* 1px vertical divider */}
-          <div className="w-px bg-stroke shrink-0" />
-          {/* Column 3: Main content — internal scroll only */}
-          <main className="flex-1 min-h-0 bg-background overflow-y-auto">
+        {/* Nav panel + main content */}
+        <div className="flex flex-1 min-h-0 md:rounded-xl bg-background md:border md:border-stroke overflow-hidden">
+          {/* Nav panel — hidden on mobile */}
+          <div className="hidden md:block">
+            <NavPanel />
+          </div>
+          <div className="hidden md:block w-px bg-stroke shrink-0" />
+          {/* Main content */}
+          <main className="flex-1 min-h-0 bg-background overflow-y-auto pb-16 md:pb-0">
             <Outlet />
           </main>
         </div>
       </div>
+
+      {/* Mobile bottom nav */}
+      <MobileBottomNav />
     </div>
   );
 }
