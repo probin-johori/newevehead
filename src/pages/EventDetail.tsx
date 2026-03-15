@@ -10,9 +10,10 @@ import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Flag, Plus, Eye, FileText, X, PencilSimple, ArrowRight,
-  CaretDown, CaretRight
+  CaretDown, CaretRight, ImageSquare
 } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
+import { EventImageUpload } from "@/components/EventImageUpload";
 
 type Tab = "overview" | "departments" | "tasks" | "billing" | "budget" | "documents";
 
