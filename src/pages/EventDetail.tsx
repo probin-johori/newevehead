@@ -56,6 +56,9 @@ export default function EventDetailPage() {
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["all"]));
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showAddTask, setShowAddTask] = useState<string | null>(null); // dept_id for inline add
+  const [addTaskForm, setAddTaskForm] = useState<AddTaskForm>({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
+  const [showAddDept, setShowAddDept] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
