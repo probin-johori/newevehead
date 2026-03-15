@@ -197,23 +197,20 @@ export default function EventDetailPage() {
         <span className="text-foreground">{event.name}</span>
       </p>
 
-      {/* Event Banner */}
-      {event.image_url && (
-        <div className="relative rounded-xl overflow-hidden mb-4 group">
-          <img src={event.image_url} alt={event.name} className="w-full h-40 object-cover" />
-          <button onClick={() => setShowImageUpload(true)}
-            className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
-            <ImageSquare size={14} /> Change image
-          </button>
-        </div>
-      )}
-
       {/* Event Header */}
       <div className="flex items-center gap-3 mb-1">
-        {!event.image_url && (
-          <button onClick={() => setShowImageUpload(true)}
-            className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity" title="Add event image">🎆</button>
-        )}
+        <button onClick={() => setShowImageUpload(true)} className="shrink-0 group relative">
+          {event.image_url ? (
+            <img src={event.image_url} alt={event.name} className="h-12 w-12 rounded-xl object-cover" />
+          ) : (
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold">
+              {event.name.charAt(0)}
+            </div>
+          )}
+          <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <ImageSquare size={16} className="text-white" />
+          </div>
+        </button>
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2">
@@ -252,7 +249,8 @@ export default function EventDetailPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${tab === t.key ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}>
             {t.label}
-            {t.dot && <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent" />}
+          </button>
+        ))}
           </button>
         ))}
       </div>
