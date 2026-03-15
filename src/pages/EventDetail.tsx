@@ -250,6 +250,7 @@ export default function EventDetailPage() {
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${tab === t.key ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}>
             {t.label}
           </button>
+        ))}
       </div>
 
       {/* ============ OVERVIEW ============ */}
