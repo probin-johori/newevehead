@@ -11,7 +11,7 @@ import { Plus, X, ArrowLeft } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
-type DeptTab = "events" | "tasks" | "billing" | "documents";
+type DeptTab = "events" | "tasks" | "billing" | "documents" | "members";
 
 export default function DepartmentsPage() {
   const { name } = useParams<{ name: string }>();
