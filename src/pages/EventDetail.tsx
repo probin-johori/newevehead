@@ -137,9 +137,23 @@ export default function EventDetailPage() {
         <span className="text-foreground">{event.name}</span>
       </p>
 
+      {/* Event Banner */}
+      {event.image_url && (
+        <div className="relative rounded-xl overflow-hidden mb-4 group">
+          <img src={event.image_url} alt={event.name} className="w-full h-40 object-cover" />
+          <button onClick={() => setShowImageUpload(true)}
+            className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+            <ImageSquare size={14} /> Change image
+          </button>
+        </div>
+      )}
+
       {/* Event Header */}
       <div className="flex items-center gap-3 mb-1">
-        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold">🎆</div>
+        {!event.image_url && (
+          <button onClick={() => setShowImageUpload(true)}
+            className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity" title="Add event image">🎆</button>
+        )}
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2">
