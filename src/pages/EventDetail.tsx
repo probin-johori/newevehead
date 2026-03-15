@@ -47,6 +47,7 @@ export default function EventDetailPage() {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["all"]));
+  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
