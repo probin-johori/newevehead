@@ -17,6 +17,14 @@ import { EventImageUpload } from "@/components/EventImageUpload";
 
 type Tab = "overview" | "departments" | "tasks" | "billing" | "budget" | "documents";
 
+interface AddTaskForm {
+  title: string;
+  dept_id: string;
+  assignee_id: string;
+  priority: string;
+  deadline: string;
+}
+
 const priorityConfig: Record<string, { color: string; label: string }> = {
   urgent: { color: "text-red-600", label: "Urgent" },
   high: { color: "text-amber-600", label: "High" },
@@ -37,7 +45,7 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks
+    tasks: allTasks, setTasks, departments, setDepartments, profiles
   } = useMockData();
 
   const initialTab = (searchParams.get("tab") as Tab) || "overview";
@@ -48,6 +56,9 @@ export default function EventDetailPage() {
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["all"]));
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showAddTask, setShowAddTask] = useState<string | null>(null); // dept_id for inline add
+  const [addTaskForm, setAddTaskForm] = useState<AddTaskForm>({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
+  const [showAddDept, setShowAddDept] = useState(false);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -85,14 +96,57 @@ export default function EventDetailPage() {
   const doneTasks = evTasks.filter(t => t.status === "completed").length;
   const totalTasks = evTasks.length;
 
-  const tabs: { key: Tab; label: string; dot?: boolean }[] = [
+  const tabs: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
     { key: "departments", label: "Departments" },
-    { key: "tasks", label: "Tasks" },
-    { key: "billing", label: "Billing", dot: pendingBillCount > 0 },
+    { key: "tasks", label: "To-Dos" },
+    { key: "billing", label: "Billing" },
     { key: "budget", label: "Budget" },
     { key: "documents", label: "Documents" },
   ];
+
+  const handleAddTask = (deptId: string) => {
+    if (!addTaskForm.title.trim()) { toast({ title: "Task title is required", variant: "destructive" }); return; }
+    const newTask = {
+      id: `t_${Date.now()}`,
+      event_id: event.id,
+      dept_id: deptId,
+      title: addTaskForm.title.trim(),
+      description: "",
+      assignee_id: addTaskForm.assignee_id || currentUser.id,
+      deadline: addTaskForm.deadline || new Date().toISOString().split("T")[0],
+      priority: (addTaskForm.priority || "normal") as any,
+      status: "not-started" as const,
+      subtasks: [],
+      created_by: currentUser.id,
+      created_at: new Date().toISOString(),
+    };
+    setTasks([...allTasks, newTask]);
+    setAddTaskForm({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
+    setShowAddTask(null);
+    toast({ title: "Task added" });
+  };
+
+  const handleAddDeptToEvent = (deptName: string) => {
+    const exists = depts.find(d => d.name === deptName);
+    if (exists) { toast({ title: "Department already added", variant: "destructive" }); return; }
+    const newDept = {
+      id: `d_${Date.now()}`,
+      event_id: event.id,
+      name: deptName,
+      head_id: currentUser.id,
+      allocated_budget: 0,
+      spent: 0,
+      notes: "",
+    };
+    setDepartments([...departments, newDept]);
+    setShowAddDept(false);
+    toast({ title: `${deptName} added to event` });
+  };
+
+  const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
+  const existingDeptNames = new Set(depts.map(d => d.name));
+  const availableDepts = allDeptNames.filter(n => !existingDeptNames.has(n));
 
   const bill = selectedBill ? evBills.find(b => b.id === selectedBill) : null;
 
@@ -143,23 +197,20 @@ export default function EventDetailPage() {
         <span className="text-foreground">{event.name}</span>
       </p>
 
-      {/* Event Banner */}
-      {event.image_url && (
-        <div className="relative rounded-xl overflow-hidden mb-4 group">
-          <img src={event.image_url} alt={event.name} className="w-full h-40 object-cover" />
-          <button onClick={() => setShowImageUpload(true)}
-            className="absolute bottom-3 right-3 rounded-full bg-black/60 px-3 py-1.5 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
-            <ImageSquare size={14} /> Change image
-          </button>
-        </div>
-      )}
-
       {/* Event Header */}
       <div className="flex items-center gap-3 mb-1">
-        {!event.image_url && (
-          <button onClick={() => setShowImageUpload(true)}
-            className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold hover:opacity-90 transition-opacity" title="Add event image">🎆</button>
-        )}
+        <button onClick={() => setShowImageUpload(true)} className="shrink-0 group relative">
+          {event.image_url ? (
+            <img src={event.image_url} alt={event.name} className="h-12 w-12 rounded-xl object-cover" />
+          ) : (
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold">
+              {event.name.charAt(0)}
+            </div>
+          )}
+          <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <ImageSquare size={16} className="text-white" />
+          </div>
+        </button>
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2">
@@ -198,7 +249,6 @@ export default function EventDetailPage() {
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${tab === t.key ? "text-foreground border-b-2 border-foreground -mb-px" : "text-muted-foreground hover:text-foreground"}`}>
             {t.label}
-            {t.dot && <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-accent" />}
           </button>
         ))}
       </div>
@@ -309,91 +359,162 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ TASKS — collapsed groups by dept ============ */}
+      {/* ============ TASKS — grouped by dept, matching screenshot layout ============ */}
       {tab === "tasks" && (
-        <div className="space-y-4">
-          {tasksByDept.map(({ dept, tasks: dTasks }) => {
-            const isCollapsed = collapsedGroups.has(dept.id);
-            return (
-              <div key={dept.id} className="rounded-xl border border-stroke overflow-hidden">
-                <button onClick={() => toggleGroup(dept.id)} className="flex items-center gap-2 w-full px-4 py-3 bg-secondary/50 hover:bg-selected transition-colors text-left">
-                  {isCollapsed ? <CaretRight size={14} /> : <CaretDown size={14} />}
-                  <span className="text-sm font-semibold">{dept.name}</span>
-                  <span className="text-xs text-muted-foreground">({dTasks.length})</span>
+        <div className="space-y-6">
+          {tasksByDept.map(({ dept, tasks: dTasks }) => (
+            <div key={dept.id}>
+              {/* Department group header */}
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold">{dept.name}</h3>
+                <button onClick={() => setShowAddTask(showAddTask === dept.id ? null : dept.id)}
+                  className="rounded-full bg-foreground px-4 py-1.5 text-xs font-medium text-background hover:bg-foreground/90 transition-colors">
+                  Add Task
                 </button>
-                {!isCollapsed && (
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-stroke">
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
-                      <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                    </tr></thead>
-                    <tbody>
-                      {dTasks.map(t => {
-                        const assignee = getProfile(t.assignee_id);
-                        const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
-                        const pc = priorityConfig[t.priority] || priorityConfig.normal;
-                        const doneCount = t.subtasks.filter(s => s.completed).length;
-                        return (
-                          <tr key={t.id} className="border-b border-stroke last:border-0 hover:bg-selected cursor-pointer transition-colors"
-                            onClick={() => setSelectedTask(t.id)}>
-                            <td className="px-4 py-3 font-medium">{t.title}</td>
-                            <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
-                            <td className="px-4 py-3"><div className="flex items-center gap-1"><Flag size={13} weight="fill" className={pc.color} /><span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span></div></td>
-                            <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                            <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
-                            <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
               </div>
-            );
-          })}
+              {/* Table header */}
+              <div className="rounded-xl border border-stroke overflow-hidden">
+                <table className="w-full text-sm table-fixed">
+                  <thead><tr className="border-b border-stroke">
+                    <th className="w-[5%] px-2 py-2.5" />
+                    <th className="w-[28%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                    <th className="w-[14%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
+                    <th className="w-[8%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                    <th className="w-[12%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="w-[3%] px-2 py-2.5" />
+                  </tr></thead>
+                  <tbody>
+                    {dTasks.map(t => {
+                      const assignee = getProfile(t.assignee_id);
+                      const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
+                      const pc = priorityConfig[t.priority] || priorityConfig.normal;
+                      const doneCount = t.subtasks.filter(s => s.completed).length;
+                      return (
+                        <tr key={t.id} className="border-b border-stroke last:border-0 hover:bg-selected cursor-pointer transition-colors"
+                          onClick={() => setSelectedTask(t.id)}>
+                          <td className="px-2 py-3 text-center">
+                            <CaretDown size={14} className="text-muted-foreground mx-auto" />
+                          </td>
+                          <td className="px-4 py-3 font-medium truncate">{t.title}</td>
+                          <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>
+                          <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
+                          <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
+                          <td className="px-4 py-3"><div className="flex items-center gap-1"><Flag size={13} weight="fill" className={pc.color} /><span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span></div></td>
+                          <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                          <td className="px-2 py-3 text-center">
+                            <CaretDown size={14} className="text-muted-foreground mx-auto rotate-[-90deg]" />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Inline add task row */}
+                    {showAddTask === dept.id && (
+                      <tr className="border-b border-stroke bg-secondary/30">
+                        <td className="px-2 py-2" />
+                        <td className="px-4 py-2" colSpan={2}>
+                          <input autoFocus value={addTaskForm.title} onChange={e => setAddTaskForm(f => ({ ...f, title: e.target.value }))}
+                            onKeyDown={e => e.key === "Enter" && handleAddTask(dept.id)}
+                            placeholder="Task name..." className="w-full bg-background border border-stroke rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
+                        </td>
+                        <td className="px-4 py-2">
+                          <select value={addTaskForm.assignee_id} onChange={e => setAddTaskForm(f => ({ ...f, assignee_id: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                            <option value="">Assign</option>
+                            {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </td>
+                        <td className="px-4 py-2">
+                          <input type="date" value={addTaskForm.deadline} onChange={e => setAddTaskForm(f => ({ ...f, deadline: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full" />
+                        </td>
+                        <td className="px-4 py-2" />
+                        <td className="px-4 py-2">
+                          <select value={addTaskForm.priority} onChange={e => setAddTaskForm(f => ({ ...f, priority: e.target.value }))}
+                            className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="urgent">Urgent</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-2" colSpan={2}>
+                          <div className="flex gap-1">
+                            <button onClick={() => handleAddTask(dept.id)} className="rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background">Add</button>
+                            <button onClick={() => setShowAddTask(null)} className="rounded-full bg-secondary px-3 py-1 text-[11px] font-medium">✕</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+                {dTasks.length === 0 && !showAddTask && <div className="text-center py-8 text-sm text-muted-foreground">No tasks yet</div>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ============ DEPARTMENTS — with budget per event & sidesheet ============ */}
+      {/* ============ DEPARTMENTS — with add & budget ============ */}
       {tab === "departments" && (
-        <div className="rounded-xl border border-stroke overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-stroke">
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
-            </tr></thead>
-            <tbody>
-              {depts.map(d => {
-                const head = getProfile(d.head_id);
-                const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
-                const remaining = d.allocated_budget - d.spent;
-                return (
-                  <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
-                    onClick={() => setDeptSheet(d.id)}>
-                    <td className="px-4 py-3 font-medium">{d.name}</td>
-                    <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
-                    <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
-                        <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{depts.length} departments</p>
+            <div className="relative">
+              <button onClick={() => setShowAddDept(!showAddDept)}
+                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+                <Plus size={14} /> Add Department
+              </button>
+              {showAddDept && (
+                <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                  {availableDepts.length > 0 ? availableDepts.map(name => (
+                    <button key={name} onClick={() => handleAddDeptToEvent(name)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-selected transition-colors">{name}</button>
+                  )) : (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already added</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-stroke overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-stroke">
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
+              </tr></thead>
+              <tbody>
+                {depts.map(d => {
+                  const head = getProfile(d.head_id);
+                  const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
+                  const remaining = d.allocated_budget - d.spent;
+                  return (
+                    <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
+                      onClick={() => setDeptSheet(d.id)}>
+                      <td className="px-4 py-3 font-medium">{d.name}</td>
+                      <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
+                      <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
+                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
