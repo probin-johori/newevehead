@@ -349,6 +349,90 @@ export default function DepartmentsPage() {
         </div>
       )}
 
+      {/* Members Tab */}
+      {deptTab === "members" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{deptMembers.length} members</p>
+            <div className="relative">
+              <button onClick={() => setShowAddMember(!showAddMember)}
+                className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+                <Plus size={14} /> Add Member
+              </button>
+              {showAddMember && (
+                <div className="absolute right-0 top-full mt-1 w-64 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                  {availableMembers.length > 0 ? availableMembers.map(p => (
+                    <button key={p.id} onClick={() => { handleAddMember(p.id); setShowAddMember(false); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-selected transition-colors flex items-center gap-2">
+                      <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
+                      <span>{p.name}</span>
+                    </button>
+                  )) : (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">No more members to add</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dept Head section */}
+          <div className="rounded-xl border border-stroke p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">Department Head</p>
+            {head ? (
+              <div className="flex items-center gap-3">
+                <UserAvatar name={head.name} color={head.avatar_color} size="md" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{head.name}</p>
+                  <p className="text-xs text-muted-foreground">{head.email}</p>
+                </div>
+                <select value={head.id} onChange={e => handleSetHead(e.target.value)}
+                  className="rounded-lg border border-stroke bg-secondary px-3 py-1.5 text-xs focus:outline-none">
+                  {deptMembers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No head assigned</p>
+            )}
+          </div>
+
+          {/* Members list */}
+          <div className="rounded-xl border border-stroke overflow-hidden">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-stroke">
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Member</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
+                <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+              </tr></thead>
+              <tbody>
+                {deptMembers.map(p => (
+                  <tr key={p.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors">
+                    <td className="px-4 py-3">
+                      <button onClick={() => setProfileUserId(p.id)} className="flex items-center gap-2 hover:opacity-80">
+                        <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
+                        <span className="font-medium">{p.name}</span>
+                        {p.id === head?.id && <span className="rounded-full bg-accent/10 text-accent px-2 py-0.5 text-[10px] font-semibold">Head</span>}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{p.email}</td>
+                    <td className="px-4 py-3 text-muted-foreground capitalize">{p.role?.replace("_", " ")}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {p.id !== head?.id && (
+                          <button onClick={() => handleSetHead(p.id)} className="text-xs text-muted-foreground hover:text-foreground">Make Head</button>
+                        )}
+                        <button onClick={() => handleRemoveMember(p.id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {deptMembers.length === 0 && <div className="text-center py-12 text-sm text-muted-foreground">No members in this department</div>}
+          </div>
+        </div>
+      )}
+
       <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
       <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
     </div>
