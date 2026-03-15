@@ -7,7 +7,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
   const { getUserNotifications, setNotifications, notifications, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
-  const { signOut, profile: authProfile } = useAuth();
+  const { signOut, profile: authProfile, role: authRole } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
@@ -19,6 +19,13 @@ export function TopBar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const orgRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Use auth profile data for display
+  const displayName = authProfile?.name || currentUser.name;
+  const displayEmail = authProfile?.email || currentUser.email;
+  const displayColor = authProfile?.avatar_color || currentUser.avatar_color;
+  const roleLabels: Record<string, string> = { sa: "Super Admin", org: "Organiser", dept_head: "Dept Head", dept_member: "Member" };
+  const displayRole = authRole || currentUser.role;
 
   const markAllRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
 
@@ -49,7 +56,6 @@ export function TopBar() {
     return () => document.removeEventListener("mousedown", handler);
   }, [searchFocused]);
 
-  const roleLabels: Record<string, string> = { sa: "Super Admin", org: "Organiser", dept_head: "Dept Head", dept_member: "Member" };
   const activeOrg = organisations.find(o => o.active);
 
   // Search results
@@ -68,8 +74,10 @@ export function TopBar() {
     <header className="flex h-[52px] items-center justify-between px-5 bg-page-bg shrink-0 sticky top-0 z-30">
       <div className="relative" ref={orgRef}>
         <button onClick={() => setOrgOpen(!orgOpen)} className="flex items-center gap-2 text-sm font-semibold text-foreground hover:text-foreground/80 transition-colors">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-rose-500 text-[10px] font-bold text-white">ZH</div>
-          {activeOrg?.name || "Zero Hour Events"}
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-rose-500 text-[10px] font-bold text-white">
+            {(activeOrg?.name || "ZH").split(" ").map(w => w[0]).join("").slice(0, 2)}
+          </div>
+          {activeOrg?.name || "My Organisation"}
           <CaretDown size={12} className="text-muted-foreground" />
         </button>
         {orgOpen && (
@@ -97,7 +105,7 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Search with auto-suggest */}
+        {/* Search */}
         <div className="relative" ref={searchRef}>
           <div className="flex items-center gap-2 rounded-full bg-background border border-stroke px-4 py-1.5 w-[280px]">
             <MagnifyingGlass size={14} className="text-muted-foreground" />
@@ -145,37 +153,13 @@ export function TopBar() {
                   ))}
                 </div>
               )}
-              {searchResults?.departments.length! > 0 && (
-                <div className="p-2 border-t border-stroke">
-                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Departments</p>
-                  {searchResults!.departments.map(name => (
-                    <button key={name} onClick={() => { navigate(`/departments/${encodeURIComponent(name)}`); setSearchFocused(false); setSearchQuery(""); }}
-                      className="flex w-full items-center gap-2 px-2 py-2 text-sm rounded-lg hover:bg-selected transition-colors">
-                      <span className="text-lg">🏢</span>
-                      <div className="text-left"><p className="font-medium">{name}</p><p className="text-[11px] text-muted-foreground">Department</p></div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {searchResults?.documents.length! > 0 && (
-                <div className="p-2 border-t border-stroke">
-                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Documents</p>
-                  {searchResults!.documents.map(d => (
-                    <button key={d.id} onClick={() => { navigate(`/documents`); setSearchFocused(false); setSearchQuery(""); }}
-                      className="flex w-full items-center gap-2 px-2 py-2 text-sm rounded-lg hover:bg-selected transition-colors">
-                      <span className="text-lg">📄</span>
-                      <div className="text-left"><p className="font-medium">{d.name}</p><p className="text-[11px] text-muted-foreground">Document</p></div>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
 
         {/* Notifications */}
         <div className="relative">
-          <button onClick={() => setNotifOpen(!notifOpen)} className="relative flex h-8 w-8 items-center justify-center rounded-full hover:bg-background transition-colors">
+          <button onClick={() => setNotifOpen(!notifOpen)} className="relative flex h-8 w-8 items-center justify-center rounded-full hover:bg-background transition-colors" aria-label="Notifications">
             <Bell size={18} weight={unreadCount > 0 ? "fill" : "regular"} className="text-foreground" />
             {unreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-white">{unreadCount}</span>}
           </button>
@@ -190,7 +174,7 @@ export function TopBar() {
                   </button>
                 </div>
                 <div className="max-h-80 overflow-y-auto divide-y divide-stroke/50">
-                  {userNotifs.slice(0, 7).length === 0 ? (
+                  {userNotifs.length === 0 ? (
                     <p className="p-4 text-sm text-muted-foreground text-center">No notifications</p>
                   ) : (
                     userNotifs.slice(0, 7).map(n => (
@@ -216,17 +200,17 @@ export function TopBar() {
 
         {/* Profile Dropdown */}
         <div className="relative" ref={profileRef}>
-          <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-1.5">
-            <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
+          <button onClick={() => setProfileOpen(!profileOpen)} className="flex items-center gap-1.5" aria-label="Profile">
+            <UserAvatar name={displayName} color={displayColor} size="sm" />
           </button>
           {profileOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
               <div className="absolute right-0 top-10 z-50 w-[240px] rounded-xl border border-stroke bg-card shadow-[0_4px_16px_rgba(0,0,0,0.10)] py-2">
                 <div className="px-4 py-2 border-b border-stroke">
-                  <p className="text-sm font-semibold">{currentUser.name}</p>
-                  <p className="text-xs text-muted-foreground">{currentUser.email}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{roleLabels[currentUser.role]}</p>
+                  <p className="text-sm font-semibold">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{displayEmail}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{roleLabels[displayRole] || "Member"}</p>
                 </div>
                 <div className="py-1">
                   <button onClick={() => { setProfileOpen(false); navigate("/settings?tab=profile"); }}

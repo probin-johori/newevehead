@@ -19,15 +19,15 @@ export function AppSidebar() {
   };
 
   return (
-    <aside className="flex w-[70px] flex-col items-center shrink-0">
-      <div className="flex h-full w-full flex-col items-center bg-sidebar py-3 rounded-xl">
+    <aside className="flex w-[70px] flex-col items-center shrink-0 h-full">
+      <div className="flex h-full w-full flex-col items-center bg-sidebar py-3 rounded-xl" style={{ minHeight: "calc(100vh - 76px)" }}>
         <nav className="flex flex-1 flex-col items-center gap-0.5">
           {navItems.map((item) => {
             const active = isActive(item.to);
             return (
               <NavLink
                 key={item.to}
-                to={item.to === "/dashboard" ? "/events/e1" : item.to}
+                to={item.to === "/dashboard" ? "/dashboard" : item.to}
                 className={`flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 transition-colors w-[54px] ${
                   active
                     ? "bg-white/15 text-white"

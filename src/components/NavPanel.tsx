@@ -1,12 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { NavLink, useLocation, useParams } from "react-router-dom";
+import { NavLink, useLocation, useParams, useNavigate } from "react-router-dom";
 import { useMockData } from "@/context/MockDataContext";
-import { StatusBadge } from "@/components/StatusBadge";
+import { useAuth } from "@/context/AuthContext";
+import { EventImageUpload } from "@/components/EventImageUpload";
 import {
   ChartBar, Hash, Plus, DotsThreeOutline, CaretDown, CaretRight,
-  Funnel, Clock, Upload, User, ShieldCheck, UserPlus,
-  ListChecks, FolderOpen, CheckCircle, XCircle, HourglassSimple, Receipt, Buildings
+  User, ShieldCheck, UserPlus,
+  ListChecks, FolderOpen, Receipt, Buildings
 } from "@phosphor-icons/react";
+import { toast } from "@/hooks/use-toast";
+import { useScrollLock } from "@/hooks/useScrollLock";
+import { X } from "@phosphor-icons/react";
 
 type MainTab = "home" | "task" | "dept" | "billing" | "document" | "team";
 
@@ -27,11 +31,21 @@ const navItemInactive = `${navItemBase} text-muted-foreground hover:bg-selected 
 const iconBtnClass = "flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-[hsl(0_0%_88%)] transition-colors";
 
 export function NavPanel() {
-  const { events, getDeptsByEvent, departments } = useMockData();
+  const { events, getDeptsByEvent, departments, setEvents, currentUser, documents } = useMockData();
+  const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ id: string }>();
   const [showAllEvents, setShowAllEvents] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["events-task", "events-billing", "events-doc"]));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["events-task", "events-billing", "events-doc", "folders"]));
+  const [showAddEvent, setShowAddEvent] = useState(false);
+
+  // Add event form
+  const [addEventForm, setAddEventForm] = useState({
+    name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "",
+  });
+  const [showImageUpload, setShowImageUpload] = useState(false);
+
+  useScrollLock(showAddEvent);
 
   const STORAGE_KEY = "zh-nav-width";
   const MIN_W = 180;
@@ -66,12 +80,46 @@ export function NavPanel() {
   const visibleEvents = showAllEvents ? events : events.slice(0, 4);
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
 
+  // Get custom folders from documents
+  const builtInFolders = ["Contracts", "Layouts", "Permits", "Other"];
+  const allDocFolders = Array.from(new Set(documents.map(d => d.folder)));
+  const customFolders = allDocFolders.filter(f => !builtInFolders.includes(f));
+  const displayFolders = [...builtInFolders, ...customFolders].filter(f => {
+    return documents.some(d => d.folder === f);
+  });
+
   const toggleSection = (key: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
+  };
+
+  const handleAddEvent = () => {
+    if (!addEventForm.name.trim()) {
+      toast({ title: "Event name is required", variant: "destructive" });
+      return;
+    }
+    const newEvent = {
+      id: `e_${Date.now()}`,
+      name: addEventForm.name.trim(),
+      location: addEventForm.location,
+      start_date: addEventForm.start_date || new Date().toISOString().split("T")[0],
+      end_date: addEventForm.end_date || new Date().toISOString().split("T")[0],
+      setup_date: addEventForm.start_date || new Date().toISOString().split("T")[0],
+      teardown_date: addEventForm.end_date || new Date().toISOString().split("T")[0],
+      estimated_budget: Number(addEventForm.estimated_budget) || 0,
+      status: "planning" as const,
+      poc_id: currentUser.id,
+      created_by: currentUser.id,
+      image_url: addEventForm.image_url || undefined,
+    };
+    setEvents([...events, newEvent]);
+    setShowAddEvent(false);
+    setAddEventForm({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
+    toast({ title: "Event created" });
+    navigate(`/events/${newEvent.id}`);
   };
 
   return (
@@ -90,7 +138,7 @@ export function NavPanel() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className={sectionLabelClass} style={{ ...sectionLabelColor, marginBottom: 0 }}>EVENTS</p>
-                  <button className={iconBtnClass}><Plus size={12} weight="bold" /></button>
+                  <button onClick={() => setShowAddEvent(true)} className={iconBtnClass} aria-label="Add event"><Plus size={12} weight="bold" /></button>
                 </div>
                 <div className="space-y-0.5">
                   {visibleEvents.map(ev => {
@@ -174,7 +222,7 @@ export function NavPanel() {
             </>
           )}
 
-          {/* ===== BILLING TAB — cleaned: no status sub-items ===== */}
+          {/* ===== BILLING TAB ===== */}
           {mainTab === "billing" && (
             <>
               <div>
@@ -202,16 +250,39 @@ export function NavPanel() {
             </>
           )}
 
-          {/* ===== DOCUMENT TAB — cleaned: only All Documents ===== */}
+          {/* ===== DOCUMENT TAB ===== */}
           {mainTab === "document" && (
-            <div>
-              <p className={sectionLabelClass} style={sectionLabelColor}>DOCUMENTS</p>
-              <div className="space-y-0.5">
-                <NavLink to="/documents" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
-                  <FolderOpen size={14} /> All Documents
-                </NavLink>
+            <>
+              <div>
+                <p className={sectionLabelClass} style={sectionLabelColor}>DOCUMENTS</p>
+                <div className="space-y-0.5">
+                  <NavLink to="/documents" end className={({ isActive }) => isActive ? navItemActive : navItemInactive}>
+                    <FolderOpen size={14} /> All Documents
+                  </NavLink>
+                </div>
               </div>
-            </div>
+              {displayFolders.length > 0 && (
+                <div>
+                  <button onClick={() => toggleSection("folders")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
+                    {expandedSections.has("folders") ? <CaretDown size={10} /> : <CaretRight size={10} />} FOLDERS
+                  </button>
+                  {expandedSections.has("folders") && (
+                    <div className="space-y-0.5 pl-1">
+                      {displayFolders.map(f => {
+                        const count = documents.filter(d => d.folder === f).length;
+                        return (
+                          <NavLink key={f} to={`/documents?folder=${encodeURIComponent(f)}`}
+                            className={`${navItemInactive} justify-between`}>
+                            <span className="truncate">{f}</span>
+                            <span className="text-xs text-muted-foreground">{count}</span>
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           {/* ===== TEAM TAB ===== */}
@@ -244,6 +315,83 @@ export function NavPanel() {
       </aside>
       <div onMouseDown={handleMouseDown}
         className={`absolute right-0 top-0 h-full w-1 cursor-col-resize hover:bg-accent/30 transition-colors z-10 ${isResizing ? "bg-accent/40" : ""}`} />
+
+      {/* Add Event Sidesheet */}
+      {showAddEvent && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddEvent(false)} />
+          <div className="fixed right-0 top-0 z-[61] h-full w-full max-w-lg overflow-y-auto bg-nav-panel border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+            onKeyDown={e => e.key === "Escape" && setShowAddEvent(false)}>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Create Event</h3>
+                <button onClick={() => setShowAddEvent(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
+
+              {/* Image thumbnail */}
+              <div>
+                <label className="text-sm font-medium">Event Thumbnail</label>
+                {addEventForm.image_url ? (
+                  <div className="relative mt-2 rounded-xl overflow-hidden group">
+                    <img src={addEventForm.image_url} alt="" className="w-full h-32 object-cover" />
+                    <button onClick={() => setShowImageUpload(true)}
+                      className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowImageUpload(true)}
+                    className="mt-2 flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-stroke rounded-xl bg-secondary hover:bg-selected transition-colors cursor-pointer">
+                    <p className="text-sm font-medium">Add thumbnail</p>
+                    <p className="text-xs text-muted-foreground">Upload or choose from gallery</p>
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Event Name <span className="text-red-500">*</span></label>
+                <input value={addEventForm.name} onChange={e => setAddEventForm(f => ({ ...f, name: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Annual Gala 2026" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Location</label>
+                <input value={addEventForm.location} onChange={e => setAddEventForm(f => ({ ...f, location: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Venue name and city" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Start Date</label>
+                  <input type="date" value={addEventForm.start_date} onChange={e => setAddEventForm(f => ({ ...f, start_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">End Date</label>
+                  <input type="date" value={addEventForm.end_date} onChange={e => setAddEventForm(f => ({ ...f, end_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Estimated Budget (₹)</label>
+                <input type="number" value={addEventForm.estimated_budget} onChange={e => setAddEventForm(f => ({ ...f, estimated_budget: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="0" />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <button onClick={() => setShowAddEvent(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                <button onClick={handleAddEvent} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Create Event</button>
+              </div>
+            </div>
+          </div>
+
+          {showImageUpload && (
+            <EventImageUpload
+              currentImage={addEventForm.image_url || undefined}
+              onSelect={(url) => { setAddEventForm(f => ({ ...f, image_url: url })); setShowImageUpload(false); }}
+              onClose={() => setShowImageUpload(false)}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
