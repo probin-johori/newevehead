@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
-  const { getUserNotifications, setNotifications, notifications, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { getUserNotifications, markAllNotificationsRead, markNotificationRead, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
   const { signOut, profile: authProfile, role: authRole } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -27,10 +27,10 @@ export function TopBar() {
   const roleLabels: Record<string, string> = { sa: "Super Admin", org: "Organiser", dept_head: "Dept Head", dept_member: "Member" };
   const displayRole = authRole || currentUser.role;
 
-  const markAllRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllRead = () => markAllNotificationsRead();
 
   const handleNotifClick = (n: typeof userNotifs[0]) => {
-    setNotifications(notifications.map(notif => notif.id === n.id ? { ...notif, read: true } : notif));
+    markNotificationRead(n.id);
     setNotifOpen(false);
     if (n.link_to) navigate(n.link_to);
   };

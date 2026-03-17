@@ -11,7 +11,7 @@ import { EventImageUpload } from "@/components/EventImageUpload";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent, setEvents, currentUser } = useMockData();
+  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent, setEvents, currentUser, addEvent: dbAddEvent, orgId } = useMockData();
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -31,23 +31,22 @@ export default function DashboardPage() {
   const tasksDone = filteredTasks.filter(t => t.status === "completed").length;
   const overdueTasks = filteredTasks.filter(t => t.status !== "completed" && new Date(t.deadline) < new Date()).length;
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!addForm.name.trim()) { toast({ title: "Event name is required", variant: "destructive" }); return; }
-    const newEvent: Event = {
-      id: `e_${Date.now()}`, name: addForm.name.trim(), location: addForm.location,
+    const newEvent = await dbAddEvent({
+      name: addForm.name.trim(), location: addForm.location,
       start_date: addForm.start_date || new Date().toISOString().split("T")[0],
       end_date: addForm.end_date || new Date().toISOString().split("T")[0],
       setup_date: addForm.start_date || new Date().toISOString().split("T")[0],
       teardown_date: addForm.end_date || new Date().toISOString().split("T")[0],
       estimated_budget: Number(addForm.estimated_budget) || 0,
-      status: "planning", poc_id: currentUser.id, created_by: currentUser.id,
+      status: "planning" as const, poc_id: currentUser.id, created_by: currentUser.id,
       image_url: addForm.image_url || undefined,
-    };
-    setEvents([...events, newEvent]);
+    });
     setShowAddEvent(false);
     setAddForm({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
     toast({ title: "Event created" });
-    navigate(`/events/${newEvent.id}`);
+    if (newEvent) navigate(`/events/${newEvent.id}`);
   };
 
   return (

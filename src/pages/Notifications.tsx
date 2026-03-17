@@ -6,12 +6,12 @@ import { Check } from "@phosphor-icons/react";
 
 export default function NotificationsPage() {
   const navigate = useNavigate();
-  const { getUserNotifications, setNotifications, notifications, getProfile } = useMockData();
+  const { getUserNotifications, markNotificationRead, markAllNotificationsRead, getProfile } = useMockData();
   const userNotifs = getUserNotifications();
   const [tab, setTab] = useState<"all" | "unread">("all");
 
-  const markAllRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
-  const markRead = (id: string) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
+  const markAllRead = () => markAllNotificationsRead();
+  const markRead = (id: string) => markNotificationRead(id);
 
   const filtered = tab === "unread" ? userNotifs.filter(n => !n.read) : userNotifs;
 

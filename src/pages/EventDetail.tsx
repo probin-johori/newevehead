@@ -46,7 +46,11 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles
+    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles,
+    addEvent: dbAddEvent, updateEvent: dbUpdateEvent,
+    addDepartment: dbAddDepartment, deleteDepartment: dbDeleteDepartment,
+    addTask: dbAddTask, updateTask: dbUpdateTask,
+    updateBill: dbUpdateBill,
   } = useMockData();
   const assignableProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
 
@@ -108,10 +112,9 @@ export default function EventDetailPage() {
     { key: "documents", label: "Documents" },
   ];
 
-  const handleAddTask = (deptId: string) => {
+  const handleAddTask = async (deptId: string) => {
     if (!addTaskForm.title.trim()) { toast({ title: "Task title is required", variant: "destructive" }); return; }
-    const newTask = {
-      id: `t_${Date.now()}`,
+    await dbAddTask({
       event_id: event.id,
       dept_id: deptId,
       title: addTaskForm.title.trim(),
@@ -120,36 +123,31 @@ export default function EventDetailPage() {
       deadline: addTaskForm.deadline || new Date().toISOString().split("T")[0],
       priority: (addTaskForm.priority || "normal") as any,
       status: "not-started" as const,
-      subtasks: [],
       created_by: currentUser.id,
-      created_at: new Date().toISOString(),
-    };
-    setTasks([...allTasks, newTask]);
+      labels: [],
+    });
     setAddTaskForm({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
     setShowAddTask(null);
     toast({ title: "Task added" });
   };
 
-  const handleAddDeptToEvent = (deptName: string) => {
+  const handleAddDeptToEvent = async (deptName: string) => {
     const exists = depts.find(d => d.name === deptName);
     if (exists) { toast({ title: "Department already added", variant: "destructive" }); return; }
-    const newDept = {
-      id: `d_${Date.now()}`,
+    await dbAddDepartment({
       event_id: event.id,
       name: deptName,
       head_id: currentUser.id,
       allocated_budget: 0,
       spent: 0,
       notes: "",
-    };
-    setDepartments([...departments, newDept]);
+    });
     setShowAddDept(false);
     toast({ title: `${deptName} added to event` });
   };
 
-  const handleRemoveDeptFromEvent = (deptId: string) => {
-    setDepartments(departments.filter(d => d.id !== deptId));
-    setTasks(allTasks.filter(t => !(t.dept_id === deptId && t.event_id === event.id)));
+  const handleRemoveDeptFromEvent = async (deptId: string) => {
+    await dbDeleteDepartment(deptId);
     setRemoveDeptConfirm(null);
     toast({ title: "Department removed from event" });
   };
@@ -161,8 +159,8 @@ export default function EventDetailPage() {
 
   const bill = selectedBill ? evBills.find(b => b.id === selectedBill) : null;
 
-  const handleSave = () => {
-    setEvents(events.map(e => e.id === event.id ? { ...e, name: editName, location: editLocation, start_date: editStartDate, end_date: editEndDate, estimated_budget: Number(editBudget) } : e));
+  const handleSave = async () => {
+    await dbUpdateEvent(event.id, { name: editName, location: editLocation, start_date: editStartDate, end_date: editEndDate, estimated_budget: Number(editBudget) });
     setIsEditing(false);
     toast({ title: "Event updated" });
   };
@@ -172,14 +170,14 @@ export default function EventDetailPage() {
     setIsEditing(false);
   };
 
-  const handleImageSelect = (url: string) => {
-    setEvents(events.map(e => e.id === event.id ? { ...e, image_url: url } : e));
+  const handleImageSelect = async (url: string) => {
+    await dbUpdateEvent(event.id, { image_url: url });
     setShowImageUpload(false);
     toast({ title: "Event image updated" });
   };
 
-  const handleApproveBill = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
+  const handleApproveBill = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] });
     toast({ title: "Bill approved" });
   };
 
