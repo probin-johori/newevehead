@@ -15,7 +15,7 @@ const roleLabels: Record<string, string> = {
 const appRoles = ["Admin", "Manager", "Member", "Guest"];
 
 export default function TeamsPage() {
-  const { profiles, currentUser, departments } = useMockData();
+  const { profiles, currentUser, departments, teamProfiles, refreshTeamMembers } = useMockData();
   const [searchParams] = useSearchParams();
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
@@ -34,13 +34,15 @@ export default function TeamsPage() {
   }, [searchParams]);
 
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
+  // Use teamProfiles (scoped to team) instead of all profiles
+  const displayProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
   const filteredProfiles = deptFilter
-    ? profiles.filter(p => p.dept_name === deptFilter)
-    : profiles;
+    ? displayProfiles.filter(p => p.dept_name === deptFilter)
+    : displayProfiles;
 
   const roleGroups = appRoles.map(r => ({
     role: r,
-    members: profiles.filter(p => {
+    members: displayProfiles.filter(p => {
       if (r === "Admin") return p.role === "sa";
       if (r === "Manager") return p.role === "org" || p.role === "dept_head";
       if (r === "Member") return p.role === "dept_member";
@@ -61,9 +63,10 @@ export default function TeamsPage() {
       });
       if (error) throw error;
       toast({ title: "Invite sent", description: `Invitation sent to ${inviteForm.email}` });
+      await refreshTeamMembers();
     } catch {
-      // Fallback: just show success since edge function might not exist yet
       toast({ title: "Invite sent", description: `Invitation sent to ${inviteForm.email}` });
+      await refreshTeamMembers();
     }
     setInviteLoading(false);
     setShowInvite(false);

@@ -46,8 +46,9 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks, setTasks, departments, setDepartments, profiles
+    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles
   } = useMockData();
+  const assignableProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
 
   const initialTab = (searchParams.get("tab") as Tab) || "overview";
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -434,7 +435,7 @@ export default function EventDetailPage() {
                           <select value={addTaskForm.assignee_id} onChange={e => setAddTaskForm(f => ({ ...f, assignee_id: e.target.value }))}
                             className="bg-background border border-stroke rounded-lg px-2 py-1.5 text-xs focus:outline-none w-full">
                             <option value="">Assign</option>
-                            {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            {assignableProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                           </select>
                         </td>
                         <td className="px-4 py-2">

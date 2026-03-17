@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AuthProfile } from "@/context/AuthContext";
 
 export type Role = "sa" | "org" | "dept_head" | "dept_member";
@@ -325,6 +326,15 @@ const defaultActivities: Activity[] = [];
 const defaultDeptHealth: DeptHealth[] = [];
 const defaultNotifications: Notification[] = [];
 
+export interface TeamMember {
+  id: string;
+  org_id: string;
+  user_id: string;
+  invited_by: string | null;
+  role: string;
+  created_at: string;
+}
+
 interface MockDataContextType {
   currentUser: Profile;
   setCurrentUser: (user: Profile) => void;
@@ -355,6 +365,9 @@ interface MockDataContextType {
   setBills: (b: Bill[]) => void;
   setBillEditLogs: (l: BillEditLog[]) => void;
   setTaskComments: (c: TaskComment[]) => void;
+  teamMembers: TeamMember[];
+  teamProfiles: Profile[];
+  refreshTeamMembers: () => Promise<void>;
   login: (email: string, password: string) => boolean;
   signup: (name: string, email: string, password: string) => boolean;
   logout: () => void;
@@ -408,13 +421,57 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
   const [docList, setDocuments] = useState(defaultDocuments);
   const [editLogs, setBillEditLogs] = useState(defaultBillEditLogs);
   const [orgList, setOrganisations] = useState(defaultOrganisations);
+  const [teamMembersList, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamProfilesList, setTeamProfiles] = useState<Profile[]>([]);
+
+  // Fetch team members from DB
+  const refreshTeamMembers = useCallback(async () => {
+    if (!auth.user) return;
+    const { data: members } = await supabase
+      .from("team_members")
+      .select("*");
+    if (members) {
+      setTeamMembers(members as TeamMember[]);
+      // Fetch profiles for all team member user_ids
+      const userIds = members.map((m: any) => m.user_id);
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", userIds);
+        if (profs) {
+          const mapped: Profile[] = profs.map((p: any) => ({
+            id: p.id,
+            name: p.name || "",
+            email: p.email || "",
+            phone: p.phone || "",
+            role: (members.find((m: any) => m.user_id === p.id) as any)?.role === "admin" ? "sa" as Role : "dept_member" as Role,
+            avatar_color: p.avatar_color || "#4338ca",
+            dept_name: p.dept_name || undefined,
+          }));
+          setTeamProfiles(mapped);
+          // Also update profiles list to include team members
+          setProfiles(prev => {
+            const existing = new Set(prev.map(p => p.id));
+            const newOnes = mapped.filter(p => !existing.has(p.id));
+            return [...prev, ...newOnes];
+          });
+        }
+      }
+    }
+  }, [auth.user?.id]);
+
+  useEffect(() => {
+    if (auth.user) {
+      refreshTeamMembers();
+    }
+  }, [auth.user?.id]);
 
   // Sync currentUser with auth profile whenever it changes
   useState(() => {
     if (auth.profile) {
       const u = buildCurrentUser();
       setCurrentUser(u);
-      // Update profile list to include the logged-in user
       setProfiles(prev => {
         const exists = prev.find(p => p.id === u.id);
         if (!exists) return [u, ...prev.filter(p => p.id !== "u_default")];
@@ -465,6 +522,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       deptHealth: defaultDeptHealth, notifications: notifs,
       organisations: orgList, setOrganisations,
       setNotifications, setTasks, setBills, setBillEditLogs, setTaskComments,
+      teamMembers: teamMembersList, teamProfiles: teamProfilesList, refreshTeamMembers,
       login, signup, logout, selectRole,
       getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
       getCommentsByTask, getBillsByEvent, getBillEditLogs, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
