@@ -326,6 +326,15 @@ const defaultActivities: Activity[] = [];
 const defaultDeptHealth: DeptHealth[] = [];
 const defaultNotifications: Notification[] = [];
 
+export interface TeamMember {
+  id: string;
+  org_id: string;
+  user_id: string;
+  invited_by: string | null;
+  role: string;
+  created_at: string;
+}
+
 interface MockDataContextType {
   currentUser: Profile;
   setCurrentUser: (user: Profile) => void;
@@ -356,6 +365,9 @@ interface MockDataContextType {
   setBills: (b: Bill[]) => void;
   setBillEditLogs: (l: BillEditLog[]) => void;
   setTaskComments: (c: TaskComment[]) => void;
+  teamMembers: TeamMember[];
+  teamProfiles: Profile[];
+  refreshTeamMembers: () => Promise<void>;
   login: (email: string, password: string) => boolean;
   signup: (name: string, email: string, password: string) => boolean;
   logout: () => void;
