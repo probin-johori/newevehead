@@ -131,26 +131,23 @@ export default function EventDetailPage() {
     toast({ title: "Task added" });
   };
 
-  const handleAddDeptToEvent = (deptName: string) => {
+  const handleAddDeptToEvent = async (deptName: string) => {
     const exists = depts.find(d => d.name === deptName);
     if (exists) { toast({ title: "Department already added", variant: "destructive" }); return; }
-    const newDept = {
-      id: `d_${Date.now()}`,
+    await dbAddDepartment({
       event_id: event.id,
       name: deptName,
       head_id: currentUser.id,
       allocated_budget: 0,
       spent: 0,
       notes: "",
-    };
-    setDepartments([...departments, newDept]);
+    });
     setShowAddDept(false);
     toast({ title: `${deptName} added to event` });
   };
 
-  const handleRemoveDeptFromEvent = (deptId: string) => {
-    setDepartments(departments.filter(d => d.id !== deptId));
-    setTasks(allTasks.filter(t => !(t.dept_id === deptId && t.event_id === event.id)));
+  const handleRemoveDeptFromEvent = async (deptId: string) => {
+    await dbDeleteDepartment(deptId);
     setRemoveDeptConfirm(null);
     toast({ title: "Department removed from event" });
   };
