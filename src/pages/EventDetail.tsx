@@ -170,8 +170,8 @@ export default function EventDetailPage() {
     setIsEditing(false);
   };
 
-  const handleImageSelect = (url: string) => {
-    setEvents(events.map(e => e.id === event.id ? { ...e, image_url: url } : e));
+  const handleImageSelect = async (url: string) => {
+    await dbUpdateEvent(event.id, { image_url: url });
     setShowImageUpload(false);
     toast({ title: "Event image updated" });
   };
