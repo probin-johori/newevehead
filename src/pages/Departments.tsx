@@ -134,32 +134,27 @@ export default function DepartmentsPage() {
     { key: "members", label: "Members" },
   ];
 
-  const handleAddMember = (userId: string) => {
-    setDepartments(departments.map(d => {
-      if (d.name === deptName) {
-        const members = d.member_ids || [];
-        if (!members.includes(userId)) return { ...d, member_ids: [...members, userId] };
+  const handleAddMember = async (userId: string) => {
+    for (const d of deptInstances) {
+      const members = d.member_ids || [];
+      if (!members.includes(userId)) {
+        await dbUpdateDepartment(d.id, { member_ids: [...members, userId] });
       }
-      return d;
-    }));
+    }
     toast({ title: "Member added" });
   };
 
-  const handleRemoveMember = (userId: string) => {
-    setDepartments(departments.map(d => {
-      if (d.name === deptName) {
-        return { ...d, member_ids: (d.member_ids || []).filter(id => id !== userId) };
-      }
-      return d;
-    }));
+  const handleRemoveMember = async (userId: string) => {
+    for (const d of deptInstances) {
+      await dbUpdateDepartment(d.id, { member_ids: (d.member_ids || []).filter(id => id !== userId) });
+    }
     toast({ title: "Member removed" });
   };
 
-  const handleSetHead = (userId: string) => {
-    setDepartments(departments.map(d => {
-      if (d.name === deptName) return { ...d, head_id: userId };
-      return d;
-    }));
+  const handleSetHead = async (userId: string) => {
+    for (const d of deptInstances) {
+      await dbUpdateDepartment(d.id, { head_id: userId });
+    }
     toast({ title: "Department head updated" });
   };
 
