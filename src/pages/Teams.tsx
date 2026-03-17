@@ -15,7 +15,7 @@ const roleLabels: Record<string, string> = {
 const appRoles = ["Admin", "Manager", "Member", "Guest"];
 
 export default function TeamsPage() {
-  const { profiles, currentUser, departments } = useMockData();
+  const { profiles, currentUser, departments, teamProfiles, refreshTeamMembers } = useMockData();
   const [searchParams] = useSearchParams();
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
