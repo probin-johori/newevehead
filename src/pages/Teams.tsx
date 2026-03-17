@@ -42,7 +42,7 @@ export default function TeamsPage() {
 
   const roleGroups = appRoles.map(r => ({
     role: r,
-    members: profiles.filter(p => {
+    members: displayProfiles.filter(p => {
       if (r === "Admin") return p.role === "sa";
       if (r === "Manager") return p.role === "org" || p.role === "dept_head";
       if (r === "Member") return p.role === "dept_member";
