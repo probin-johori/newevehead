@@ -159,8 +159,8 @@ export default function EventDetailPage() {
 
   const bill = selectedBill ? evBills.find(b => b.id === selectedBill) : null;
 
-  const handleSave = () => {
-    setEvents(events.map(e => e.id === event.id ? { ...e, name: editName, location: editLocation, start_date: editStartDate, end_date: editEndDate, estimated_budget: Number(editBudget) } : e));
+  const handleSave = async () => {
+    await dbUpdateEvent(event.id, { name: editName, location: editLocation, start_date: editStartDate, end_date: editEndDate, estimated_budget: Number(editBudget) });
     setIsEditing(false);
     toast({ title: "Event updated" });
   };
