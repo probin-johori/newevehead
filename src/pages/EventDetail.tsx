@@ -46,7 +46,11 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles
+    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles,
+    addEvent: dbAddEvent, updateEvent: dbUpdateEvent,
+    addDepartment: dbAddDepartment, deleteDepartment: dbDeleteDepartment,
+    addTask: dbAddTask, updateTask: dbUpdateTask,
+    updateBill: dbUpdateBill,
   } = useMockData();
   const assignableProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
 
