@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AuthProfile } from "@/context/AuthContext";
 
 export type Role = "sa" | "org" | "dept_head" | "dept_member";
