@@ -34,9 +34,11 @@ export default function TeamsPage() {
   }, [searchParams]);
 
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
+  // Use teamProfiles (scoped to team) instead of all profiles
+  const displayProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
   const filteredProfiles = deptFilter
-    ? profiles.filter(p => p.dept_name === deptFilter)
-    : profiles;
+    ? displayProfiles.filter(p => p.dept_name === deptFilter)
+    : displayProfiles;
 
   const roleGroups = appRoles.map(r => ({
     role: r,
