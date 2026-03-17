@@ -695,9 +695,10 @@ export default function EventDetailPage() {
         const dept = getDepartment(deptSheet);
         if (!dept) return null;
         const deptTasks = evTasks.filter(t => t.dept_id === dept.id);
-        const deptBills = evBills.filter(b => b.dept_id === dept.id);
         const head = getProfile(dept.head_id);
         const utilPct = dept.allocated_budget > 0 ? Math.round((dept.spent / dept.allocated_budget) * 100) : 0;
+        const deptMembers = (dept.member_ids || []).map(id => getProfile(id)).filter(Boolean);
+        const admins = profiles.filter(p => p.role === "sa" || p.role === "org");
         return (
           <>
             <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setDeptSheet(null)} />
@@ -716,6 +717,38 @@ export default function EventDetailPage() {
                   <span>{formatINRShort(dept.allocated_budget)} allocated</span>
                 </div>
               </div>
+              {/* Department Members */}
+              <div className="border-t border-stroke pt-3">
+                <p className="text-sm font-semibold mb-2">Department Members ({deptMembers.length})</p>
+                {deptMembers.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {deptMembers.map(m => m && (
+                      <button key={m.id} onClick={() => setProfileUserId(m.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
+                        <UserAvatar name={m.name} color={m.avatar_color} size="sm" />
+                        <span className="text-sm">{m.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No members assigned</p>
+                )}
+              </div>
+              {/* Admins with Access */}
+              <div className="border-t border-stroke pt-3">
+                <p className="text-sm font-semibold mb-2">Admins with Access ({admins.length})</p>
+                <div className="space-y-1.5">
+                  {admins.map(a => (
+                    <button key={a.id} onClick={() => setProfileUserId(a.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
+                      <UserAvatar name={a.name} color={a.avatar_color} size="sm" />
+                      <div className="text-left">
+                        <span className="text-sm">{a.name}</span>
+                        <span className="text-[11px] text-muted-foreground ml-2">{a.role === "sa" ? "Super Admin" : "Organiser"}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Tasks */}
               <div className="border-t border-stroke pt-3">
                 <p className="text-sm font-semibold mb-2">Tasks ({deptTasks.length})</p>
                 <div className="space-y-1">
