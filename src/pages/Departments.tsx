@@ -26,18 +26,16 @@ export default function DepartmentsPage() {
 
   useScrollLock(showAddModal);
 
-  const handleAddDept = () => {
+  const handleAddDept = async () => {
     if (!addForm.name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
-    const newDept: Department = {
-      id: `d_${Date.now()}`,
-      event_id: events[0]?.id || "e1",
+    await dbAddDepartment({
+      event_id: events[0]?.id || "",
       name: addForm.name.trim(),
       head_id: addForm.head_id || currentUser.id,
       allocated_budget: 0,
       spent: 0,
       notes: addForm.notes,
-    };
-    setDepartments([...departments, newDept]);
+    });
     setShowAddModal(false);
     setAddForm({ name: "", notes: "", head_id: "" });
     toast({ title: "Department added" });
