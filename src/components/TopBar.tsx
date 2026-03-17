@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
-  const { getUserNotifications, setNotifications, notifications, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { getUserNotifications, markAllNotificationsRead, markNotificationRead, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
   const { signOut, profile: authProfile, role: authRole } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
