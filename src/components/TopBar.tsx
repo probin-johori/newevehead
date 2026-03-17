@@ -27,7 +27,7 @@ export function TopBar() {
   const roleLabels: Record<string, string> = { sa: "Super Admin", org: "Organiser", dept_head: "Dept Head", dept_member: "Member" };
   const displayRole = authRole || currentUser.role;
 
-  const markAllRead = () => setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllRead = () => markAllNotificationsRead();
 
   const handleNotifClick = (n: typeof userNotifs[0]) => {
     setNotifications(notifications.map(notif => notif.id === n.id ? { ...notif, read: true } : notif));
