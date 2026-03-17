@@ -11,7 +11,7 @@ import { EventImageUpload } from "@/components/EventImageUpload";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent, setEvents, currentUser } = useMockData();
+  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent, setEvents, currentUser, addEvent: dbAddEvent, orgId } = useMockData();
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
