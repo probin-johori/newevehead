@@ -146,6 +146,14 @@ export default function EventDetailPage() {
     toast({ title: `${deptName} added to event` });
   };
 
+  const handleRemoveDeptFromEvent = (deptId: string) => {
+    setDepartments(departments.filter(d => d.id !== deptId));
+    setTasks(allTasks.filter(t => !(t.dept_id === deptId && t.event_id === event.id)));
+    setRemoveDeptConfirm(null);
+    toast({ title: "Department removed from event" });
+  };
+
+
   const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
   const existingDeptNames = new Set(depts.map(d => d.name));
   const availableDepts = allDeptNames.filter(n => !existingDeptNames.has(n));
