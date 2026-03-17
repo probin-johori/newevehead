@@ -176,8 +176,8 @@ export default function EventDetailPage() {
     toast({ title: "Event image updated" });
   };
 
-  const handleApproveBill = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
+  const handleApproveBill = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "settled" as const, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] });
     toast({ title: "Bill approved" });
   };
 
