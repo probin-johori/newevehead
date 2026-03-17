@@ -16,7 +16,7 @@ type DeptTab = "events" | "tasks" | "billing" | "documents" | "members";
 export default function DepartmentsPage() {
   const { name } = useParams<{ name: string }>();
   const navigate = useNavigate();
-  const { departments, events, tasks, bills, profiles, documents, getProfile, getEvent, deptHealth, setDepartments, currentUser } = useMockData();
+  const { departments, events, tasks, bills, profiles, documents, getProfile, getEvent, deptHealth, setDepartments, currentUser, addDepartment: dbAddDepartment, updateDepartment: dbUpdateDepartment } = useMockData();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
