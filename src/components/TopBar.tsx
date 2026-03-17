@@ -30,7 +30,7 @@ export function TopBar() {
   const markAllRead = () => markAllNotificationsRead();
 
   const handleNotifClick = (n: typeof userNotifs[0]) => {
-    setNotifications(notifications.map(notif => notif.id === n.id ? { ...notif, read: true } : notif));
+    markNotificationRead(n.id);
     setNotifOpen(false);
     if (n.link_to) navigate(n.link_to);
   };
