@@ -468,7 +468,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ DEPARTMENTS — with add & budget ============ */}
+      {/* ============ DEPARTMENTS — with assign & budget ============ */}
       {tab === "departments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -476,7 +476,7 @@ export default function EventDetailPage() {
             <div className="relative">
               <button onClick={() => setShowAddDept(!showAddDept)}
                 className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-                <Plus size={14} /> Add Department
+                <Plus size={14} /> Assign Department
               </button>
               {showAddDept && (
                 <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
@@ -484,7 +484,7 @@ export default function EventDetailPage() {
                     <button key={name} onClick={() => handleAddDeptToEvent(name)}
                       className="w-full text-left px-4 py-2.5 text-sm hover:bg-selected transition-colors">{name}</button>
                   )) : (
-                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already added</p>
+                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already assigned</p>
                   )}
                 </div>
               )}
@@ -495,29 +495,36 @@ export default function EventDetailPage() {
               <thead><tr className="border-b border-stroke">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Members</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
+                <th className="px-4 py-3 w-10" />
               </tr></thead>
               <tbody>
                 {depts.map(d => {
                   const head = getProfile(d.head_id);
                   const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
-                  const remaining = d.allocated_budget - d.spent;
+                  const memberCount = d.member_ids?.length || 0;
                   return (
                     <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
                       onClick={() => setDeptSheet(d.id)}>
                       <td className="px-4 py-3 font-medium">{d.name}</td>
                       <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{memberCount} member{memberCount !== 1 ? "s" : ""}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
-                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
+                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-destructive" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setRemoveDeptConfirm(d.id)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                          <Trash size={14} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -525,6 +532,15 @@ export default function EventDetailPage() {
               </tbody>
             </table>
           </div>
+          <ConfirmDialog
+            open={!!removeDeptConfirm}
+            title="Remove Department?"
+            message="This will remove the department from this event. All associated data and changes will be lost."
+            confirmLabel="Remove"
+            destructive
+            onConfirm={() => removeDeptConfirm && handleRemoveDeptFromEvent(removeDeptConfirm)}
+            onCancel={() => setRemoveDeptConfirm(null)}
+          />
         </div>
       )}
 

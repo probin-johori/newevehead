@@ -192,6 +192,7 @@ export default function TeamsPage() {
                   className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
                   {appRoles.map(r => <option key={r} value={r}>{r}</option>)}
                 </select></div>
+              <p className="text-xs text-muted-foreground mt-1">If you don't see the email, please check your spam or junk folder.</p>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowInvite(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
                 <button onClick={handleInvite} disabled={inviteLoading}
