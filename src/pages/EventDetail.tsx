@@ -46,8 +46,9 @@ export default function EventDetailPage() {
     getEvent, getDeptsByEvent, getTasksByEvent, getBillsByEvent, getDocsByEvent,
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
-    tasks: allTasks, setTasks, departments, setDepartments, profiles
+    tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles
   } = useMockData();
+  const assignableProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
 
   const initialTab = (searchParams.get("tab") as Tab) || "overview";
   const [tab, setTab] = useState<Tab>(initialTab);
