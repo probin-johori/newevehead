@@ -522,6 +522,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       deptHealth: defaultDeptHealth, notifications: notifs,
       organisations: orgList, setOrganisations,
       setNotifications, setTasks, setBills, setBillEditLogs, setTaskComments,
+      teamMembers: teamMembersList, teamProfiles: teamProfilesList, refreshTeamMembers,
       login, signup, logout, selectRole,
       getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
       getCommentsByTask, getBillsByEvent, getBillEditLogs, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
