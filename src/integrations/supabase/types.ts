@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_event_access: {
+        Row: {
+          admin_id: string
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_color: string | null

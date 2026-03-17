@@ -8,6 +8,7 @@ import { TaskDetailSheet } from "@/components/TaskDetailSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Trash } from "@phosphor-icons/react";
 import {
   Flag, Plus, Eye, FileText, X, PencilSimple, ArrowRight,
   CaretDown, CaretRight, ImageSquare
@@ -56,9 +57,10 @@ export default function EventDetailPage() {
   const [deptSheet, setDeptSheet] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["all"]));
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [showAddTask, setShowAddTask] = useState<string | null>(null); // dept_id for inline add
+  const [showAddTask, setShowAddTask] = useState<string | null>(null);
   const [addTaskForm, setAddTaskForm] = useState<AddTaskForm>({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
   const [showAddDept, setShowAddDept] = useState(false);
+  const [removeDeptConfirm, setRemoveDeptConfirm] = useState<string | null>(null);
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
@@ -143,6 +145,14 @@ export default function EventDetailPage() {
     setShowAddDept(false);
     toast({ title: `${deptName} added to event` });
   };
+
+  const handleRemoveDeptFromEvent = (deptId: string) => {
+    setDepartments(departments.filter(d => d.id !== deptId));
+    setTasks(allTasks.filter(t => !(t.dept_id === deptId && t.event_id === event.id)));
+    setRemoveDeptConfirm(null);
+    toast({ title: "Department removed from event" });
+  };
+
 
   const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
   const existingDeptNames = new Set(depts.map(d => d.name));
@@ -458,7 +468,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ DEPARTMENTS — with add & budget ============ */}
+      {/* ============ DEPARTMENTS — with assign & budget ============ */}
       {tab === "departments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -466,7 +476,7 @@ export default function EventDetailPage() {
             <div className="relative">
               <button onClick={() => setShowAddDept(!showAddDept)}
                 className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-                <Plus size={14} /> Add Department
+                <Plus size={14} /> Assign Department
               </button>
               {showAddDept && (
                 <div className="absolute right-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
@@ -474,7 +484,7 @@ export default function EventDetailPage() {
                     <button key={name} onClick={() => handleAddDeptToEvent(name)}
                       className="w-full text-left px-4 py-2.5 text-sm hover:bg-selected transition-colors">{name}</button>
                   )) : (
-                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already added</p>
+                    <p className="px-4 py-3 text-sm text-muted-foreground">All departments already assigned</p>
                   )}
                 </div>
               )}
@@ -485,29 +495,36 @@ export default function EventDetailPage() {
               <thead><tr className="border-b border-stroke">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Head</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Members</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Remaining</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
+                <th className="px-4 py-3 w-10" />
               </tr></thead>
               <tbody>
                 {depts.map(d => {
                   const head = getProfile(d.head_id);
                   const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
-                  const remaining = d.allocated_budget - d.spent;
+                  const memberCount = d.member_ids?.length || 0;
                   return (
                     <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
                       onClick={() => setDeptSheet(d.id)}>
                       <td className="px-4 py-3 font-medium">{d.name}</td>
                       <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{memberCount} member{memberCount !== 1 ? "s" : ""}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${remaining < 0 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(Math.abs(remaining))}{remaining < 0 ? " over" : ""}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
-                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
+                          <span className={`text-xs font-medium ${utilPct > 100 ? "text-destructive" : utilPct > 70 ? "text-amber-600" : "text-muted-foreground"}`}>{utilPct}%</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setRemoveDeptConfirm(d.id)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+                          <Trash size={14} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -515,6 +532,15 @@ export default function EventDetailPage() {
               </tbody>
             </table>
           </div>
+          <ConfirmDialog
+            open={!!removeDeptConfirm}
+            title="Remove Department?"
+            message="This will remove the department from this event. All associated data and changes will be lost."
+            confirmLabel="Remove"
+            destructive
+            onConfirm={() => removeDeptConfirm && handleRemoveDeptFromEvent(removeDeptConfirm)}
+            onCancel={() => setRemoveDeptConfirm(null)}
+          />
         </div>
       )}
 
@@ -669,9 +695,10 @@ export default function EventDetailPage() {
         const dept = getDepartment(deptSheet);
         if (!dept) return null;
         const deptTasks = evTasks.filter(t => t.dept_id === dept.id);
-        const deptBills = evBills.filter(b => b.dept_id === dept.id);
         const head = getProfile(dept.head_id);
         const utilPct = dept.allocated_budget > 0 ? Math.round((dept.spent / dept.allocated_budget) * 100) : 0;
+        const deptMembers = (dept.member_ids || []).map(id => getProfile(id)).filter(Boolean);
+        const admins = profiles.filter(p => p.role === "sa" || p.role === "org");
         return (
           <>
             <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setDeptSheet(null)} />
@@ -690,6 +717,38 @@ export default function EventDetailPage() {
                   <span>{formatINRShort(dept.allocated_budget)} allocated</span>
                 </div>
               </div>
+              {/* Department Members */}
+              <div className="border-t border-stroke pt-3">
+                <p className="text-sm font-semibold mb-2">Department Members ({deptMembers.length})</p>
+                {deptMembers.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {deptMembers.map(m => m && (
+                      <button key={m.id} onClick={() => setProfileUserId(m.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
+                        <UserAvatar name={m.name} color={m.avatar_color} size="sm" />
+                        <span className="text-sm">{m.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No members assigned</p>
+                )}
+              </div>
+              {/* Admins with Access */}
+              <div className="border-t border-stroke pt-3">
+                <p className="text-sm font-semibold mb-2">Admins with Access ({admins.length})</p>
+                <div className="space-y-1.5">
+                  {admins.map(a => (
+                    <button key={a.id} onClick={() => setProfileUserId(a.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
+                      <UserAvatar name={a.name} color={a.avatar_color} size="sm" />
+                      <div className="text-left">
+                        <span className="text-sm">{a.name}</span>
+                        <span className="text-[11px] text-muted-foreground ml-2">{a.role === "sa" ? "Super Admin" : "Organiser"}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Tasks */}
               <div className="border-t border-stroke pt-3">
                 <p className="text-sm font-semibold mb-2">Tasks ({deptTasks.length})</p>
                 <div className="space-y-1">
