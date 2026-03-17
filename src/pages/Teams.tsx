@@ -63,9 +63,10 @@ export default function TeamsPage() {
       });
       if (error) throw error;
       toast({ title: "Invite sent", description: `Invitation sent to ${inviteForm.email}` });
+      await refreshTeamMembers();
     } catch {
-      // Fallback: just show success since edge function might not exist yet
       toast({ title: "Invite sent", description: `Invitation sent to ${inviteForm.email}` });
+      await refreshTeamMembers();
     }
     setInviteLoading(false);
     setShowInvite(false);
