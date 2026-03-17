@@ -112,10 +112,9 @@ export default function EventDetailPage() {
     { key: "documents", label: "Documents" },
   ];
 
-  const handleAddTask = (deptId: string) => {
+  const handleAddTask = async (deptId: string) => {
     if (!addTaskForm.title.trim()) { toast({ title: "Task title is required", variant: "destructive" }); return; }
-    const newTask = {
-      id: `t_${Date.now()}`,
+    await dbAddTask({
       event_id: event.id,
       dept_id: deptId,
       title: addTaskForm.title.trim(),
@@ -124,11 +123,9 @@ export default function EventDetailPage() {
       deadline: addTaskForm.deadline || new Date().toISOString().split("T")[0],
       priority: (addTaskForm.priority || "normal") as any,
       status: "not-started" as const,
-      subtasks: [],
       created_by: currentUser.id,
-      created_at: new Date().toISOString(),
-    };
-    setTasks([...allTasks, newTask]);
+      labels: [],
+    });
     setAddTaskForm({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
     setShowAddTask(null);
     toast({ title: "Task added" });
