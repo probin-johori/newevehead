@@ -8,6 +8,7 @@ import { TaskDetailSheet } from "@/components/TaskDetailSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Trash } from "@phosphor-icons/react";
 import {
   Flag, Plus, Eye, FileText, X, PencilSimple, ArrowRight,
   CaretDown, CaretRight, ImageSquare
