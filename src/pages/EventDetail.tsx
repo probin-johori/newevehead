@@ -803,21 +803,16 @@ export default function EventDetailPage() {
                     <input type="file" className="hidden" onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      const { addDocument: dbAddDoc } = { addDocument: async (doc: any) => {
-                        const { data, error } = await (await import("@/integrations/supabase/client")).supabase.from("documents").insert({
-                          event_id: event.id,
-                          dept_id: dept.id,
-                          name: file.name,
-                          folder: "Other",
-                          file_url: URL.createObjectURL(file),
-                          file_size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-                          uploaded_by: currentUser.id,
-                          visibility: "internal",
-                        }).select().single();
-                        if (error) console.error("addDoc error:", error);
-                        return data;
-                      }};
-                      await dbAddDoc({});
+                      await dbAddDocument({
+                        event_id: event.id,
+                        dept_id: dept.id,
+                        name: file.name,
+                        folder: "Other",
+                        file_url: URL.createObjectURL(file),
+                        file_size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+                        uploaded_by: currentUser.id,
+                        visibility: "internal",
+                      });
                       toast({ title: "Document uploaded" });
                     }} />
                   </label>
