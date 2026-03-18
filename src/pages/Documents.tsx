@@ -16,7 +16,8 @@ type DocComment = { id: string; doc_id: string; author_id: string; body: string;
 export default function DocumentsPage() {
   const {
     events, documents, setDocuments, isFreePlan, getProfile, getDepartment,
-    currentUser, departments, profiles, taskComments, setTaskComments
+    currentUser, departments, profiles, taskComments, setTaskComments,
+    addDocument, deleteDocument,
   } = useMockData();
 
   const [folderFilter, setFolderFilter] = useState("all");
@@ -30,6 +31,7 @@ export default function DocumentsPage() {
   const [confirmDeleteFolder, setConfirmDeleteFolder] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState<string | null>(null);
   const [editFolderValue, setEditFolderValue] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<DocType | null>(null);
 
   // Editing doc
   const [editTitle, setEditTitle] = useState("");
@@ -46,7 +48,7 @@ export default function DocumentsPage() {
     title: "", description: "", event_id: "", folder: "Other", file: null as File | null, tags: "",
   });
 
-  useScrollLock(!!selectedDoc || showAddModal);
+  useScrollLock(!!selectedDoc || showAddModal || !!previewDoc);
 
   if (isFreePlan) {
     return (
@@ -105,23 +107,22 @@ export default function DocumentsPage() {
     toast({ title: "Folder renamed" });
   };
 
-  const handleAddDoc = () => {
+  const handleAddDoc = async () => {
     if (!addForm.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
     if (!addForm.file) { toast({ title: "File attachment is mandatory", variant: "destructive" }); return; }
-    const newDoc: DocType = {
-      id: `doc_new_${Date.now()}`,
-      event_id: addForm.event_id || events[0]?.id || "e1",
+    if (!addForm.event_id) { toast({ title: "Please select an event", variant: "destructive" }); return; }
+    
+    await addDocument({
+      event_id: addForm.event_id,
       dept_id: null,
       name: addForm.title.trim(),
-      folder: (addForm.folder || "Other") as any,
-      file_url: "",
-      file_size: addForm.file ? `${(addForm.file.size / 1024 / 1024).toFixed(1)} MB` : "0 KB",
+      folder: addForm.folder || "Other",
+      file_url: URL.createObjectURL(addForm.file),
+      file_size: `${(addForm.file.size / 1024 / 1024).toFixed(1)} MB`,
       uploaded_by: currentUser.id,
-      uploaded_at: new Date().toISOString(),
       description: addForm.description,
       visibility: "internal",
-    };
-    setDocuments([...documents, newDoc]);
+    });
     setShowAddModal(false);
     setAddForm({ title: "", description: "", event_id: "", folder: "Other", file: null, tags: "" });
     toast({ title: "Document added" });
@@ -163,6 +164,14 @@ export default function DocumentsPage() {
     setSelectedDoc(docId);
     setDetailTab("details");
     if (d) { setEditTitle(d.name); setEditDesc(d.description || ""); }
+  };
+
+  const getFileType = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'image';
+    if (['pdf'].includes(ext)) return 'pdf';
+    if (['mp4', 'webm', 'mov'].includes(ext)) return 'video';
+    return 'other';
   };
 
   return (
@@ -253,6 +262,7 @@ export default function DocumentsPage() {
               <thead><tr className="border-b border-stroke">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Document</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Folder</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Event</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Uploaded By</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Size</th>
@@ -261,14 +271,20 @@ export default function DocumentsPage() {
               <tbody>
                 {filtered.map(d => {
                   const uploader = getProfile(d.uploaded_by);
+                  const ev = events.find(e => e.id === d.event_id);
                   return (
                     <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer" onClick={() => openDoc(d.id)}>
                       <td className="px-4 py-3 font-medium flex items-center gap-2"><FileText size={14} className="text-muted-foreground shrink-0" /><span className="truncate">{d.name}</span></td>
                       <td className="px-4 py-3 hidden md:table-cell"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{d.folder}</span></td>
+                      <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{ev?.name || "—"}</td>
                       <td className="px-4 py-3 hidden md:table-cell">{uploader && <button onClick={e => { e.stopPropagation(); setProfileUserId(uploader.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={uploader.name} color={uploader.avatar_color} size="sm" /><span>{uploader.name}</span></button>}</td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(d.uploaded_at)}</td>
                       <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{d.file_size}</td>
-                      <td className="px-4 py-3"><button className="text-muted-foreground hover:text-foreground" aria-label="View"><Eye size={15} /></button></td>
+                      <td className="px-4 py-3">
+                        <button onClick={e => { e.stopPropagation(); setPreviewDoc(d); }} className="text-muted-foreground hover:text-foreground" aria-label="Preview">
+                          <Eye size={15} />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -322,8 +338,13 @@ export default function DocumentsPage() {
               {/* Details */}
               {detailTab === "details" && (
                 <>
-                  <div className="flex items-center justify-center py-8 bg-secondary rounded-xl">
-                    <FileText size={48} className="text-muted-foreground/30" />
+                  {/* Preview area */}
+                  <div className="flex items-center justify-center py-8 bg-secondary rounded-xl cursor-pointer hover:bg-secondary/80 transition-colors"
+                    onClick={() => setPreviewDoc(doc)}>
+                    <div className="text-center">
+                      <FileText size={48} className="text-muted-foreground/30 mx-auto" />
+                      <p className="text-xs text-muted-foreground mt-2">Click to preview</p>
+                    </div>
                   </div>
 
                   <div>
@@ -353,12 +374,17 @@ export default function DocumentsPage() {
                       </select>
                     </div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Size</p><p>{doc.file_size}</p></div>
+                    <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Event</p>
+                      <p>{events.find(e => e.id === doc.event_id)?.name || "—"}</p></div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Uploaded By</p>
                       {(() => { const u = getProfile(doc.uploaded_by); return u ? <button onClick={() => setProfileUserId(u.id)} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={u.name} color={u.avatar_color} size="sm" /><span>{u.name}</span></button> : null; })()}</div>
                     <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</p><p>{formatDate(doc.uploaded_at)}</p></div>
                   </div>
 
-                  <div className="border-t border-stroke pt-3">
+                  <div className="border-t border-stroke pt-3 flex gap-3">
+                    <button onClick={() => setPreviewDoc(doc)} className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors">
+                      <Eye size={14} /> Preview
+                    </button>
                     <button className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors">
                       <FileText size={14} /> Replace file
                     </button>
@@ -434,7 +460,7 @@ export default function DocumentsPage() {
                   <input type="file" className="hidden" onChange={e => setAddForm({ ...addForm, file: e.target.files?.[0] || null })} />
                 </label>
               </div>
-              <div><label className="text-sm font-medium">Event</label>
+              <div><label className="text-sm font-medium">Event <span className="text-red-500">*</span></label>
                 <select value={addForm.event_id} onChange={e => setAddForm({ ...addForm, event_id: e.target.value })}
                   className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
                   <option value="">Select event</option>
@@ -450,6 +476,43 @@ export default function DocumentsPage() {
                 <button onClick={() => setShowAddModal(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
                 <button onClick={handleAddDoc}
                   className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Save</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <>
+          <div className="fixed inset-0 z-[70] bg-black/60" onClick={() => setPreviewDoc(null)} />
+          <div className="fixed inset-0 z-[71] flex items-center justify-center p-4">
+            <div className="w-full max-w-3xl max-h-[90vh] rounded-xl bg-card border border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-stroke">
+                <div>
+                  <h3 className="text-lg font-semibold">{previewDoc.name}</h3>
+                  <p className="text-xs text-muted-foreground">{previewDoc.file_size} · {events.find(e => e.id === previewDoc.event_id)?.name || ""}</p>
+                </div>
+                <button onClick={() => setPreviewDoc(null)} className="text-muted-foreground hover:text-foreground" aria-label="Close"><X size={20} /></button>
+              </div>
+              <div className="flex-1 overflow-auto p-6 flex items-center justify-center min-h-[400px]">
+                {previewDoc.file_url && getFileType(previewDoc.name) === 'image' ? (
+                  <img src={previewDoc.file_url} alt={previewDoc.name} className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+                ) : previewDoc.file_url && getFileType(previewDoc.name) === 'pdf' ? (
+                  <iframe src={previewDoc.file_url} className="w-full h-[70vh] rounded-lg border border-stroke" title={previewDoc.name} />
+                ) : (
+                  <div className="text-center">
+                    <FileText size={64} className="text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-sm font-medium mb-1">{previewDoc.name}</p>
+                    <p className="text-xs text-muted-foreground mb-4">{previewDoc.description || "No preview available for this file type"}</p>
+                    {previewDoc.file_url && (
+                      <a href={previewDoc.file_url} target="_blank" rel="noopener noreferrer"
+                        className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors inline-block">
+                        Download File
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
