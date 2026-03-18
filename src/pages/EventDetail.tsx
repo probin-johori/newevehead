@@ -694,10 +694,26 @@ export default function EventDetailPage() {
         const dept = getDepartment(deptSheet);
         if (!dept) return null;
         const deptTasks = evTasks.filter(t => t.dept_id === dept.id);
+        const deptDocs = docs.filter(d => d.dept_id === dept.id);
         const head = getProfile(dept.head_id);
         const utilPct = dept.allocated_budget > 0 ? Math.round((dept.spent / dept.allocated_budget) * 100) : 0;
         const deptMembers = (dept.member_ids || []).map(id => getProfile(id)).filter(Boolean);
         const admins = profiles.filter(p => p.role === "sa" || p.role === "org");
+        const nonMembers = assignableProfiles.filter(p => !(dept.member_ids || []).includes(p.id) && p.id !== dept.head_id);
+
+        const handleAddMember = async (userId: string) => {
+          const currentIds = dept.member_ids || [];
+          if (currentIds.includes(userId)) return;
+          await dbUpdateDepartment(dept.id, { member_ids: [...currentIds, userId] });
+          toast({ title: "Member added to department" });
+        };
+
+        const handleRemoveMember = async (userId: string) => {
+          const currentIds = dept.member_ids || [];
+          await dbUpdateDepartment(dept.id, { member_ids: currentIds.filter(id => id !== userId) });
+          toast({ title: "Member removed from department" });
+        };
+
         return (
           <>
             <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setDeptSheet(null)} />
@@ -716,25 +732,43 @@ export default function EventDetailPage() {
                   <span>{formatINRShort(dept.allocated_budget)} allocated</span>
                 </div>
               </div>
-              {/* Department Members */}
+              {/* Department Members with add/remove */}
               <div className="border-t border-stroke pt-3">
-                <p className="text-sm font-semibold mb-2">Department Members ({deptMembers.length})</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold">Members ({deptMembers.length})</p>
+                  {nonMembers.length > 0 && (
+                    <select
+                      value=""
+                      onChange={e => { if (e.target.value) handleAddMember(e.target.value); }}
+                      className="rounded-lg border border-stroke bg-secondary px-2 py-1 text-xs focus:outline-none"
+                    >
+                      <option value="">+ Add member</option>
+                      {nonMembers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  )}
+                </div>
                 {deptMembers.length > 0 ? (
                   <div className="space-y-1.5">
                     {deptMembers.map(m => m && (
-                      <button key={m.id} onClick={() => setProfileUserId(m.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
-                        <UserAvatar name={m.name} color={m.avatar_color} size="sm" />
-                        <span className="text-sm">{m.name}</span>
-                      </button>
+                      <div key={m.id} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50 group">
+                        <button onClick={() => setProfileUserId(m.id)} className="flex items-center gap-2 flex-1 min-w-0">
+                          <UserAvatar name={m.name} color={m.avatar_color} size="sm" />
+                          <span className="text-sm truncate">{m.name}</span>
+                        </button>
+                        <button onClick={() => handleRemoveMember(m.id)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1">
+                          <X size={12} />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No members assigned</p>
+                  <p className="text-xs text-muted-foreground">No members assigned. Use the dropdown above to add.</p>
                 )}
               </div>
               {/* Admins with Access */}
               <div className="border-t border-stroke pt-3">
-                <p className="text-sm font-semibold mb-2">Admins with Access ({admins.length})</p>
+                <p className="text-sm font-semibold mb-2">Admins ({admins.length})</p>
                 <div className="space-y-1.5">
                   {admins.map(a => (
                     <button key={a.id} onClick={() => setProfileUserId(a.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
@@ -758,6 +792,48 @@ export default function EventDetailPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+              {/* Documents */}
+              <div className="border-t border-stroke pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold">Documents ({deptDocs.length})</p>
+                  <label className="flex items-center gap-1 rounded-full bg-foreground px-3 py-1 text-[11px] font-medium text-background cursor-pointer hover:bg-foreground/90 transition-colors">
+                    <Plus size={12} /> Upload
+                    <input type="file" className="hidden" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const { addDocument: dbAddDoc } = { addDocument: async (doc: any) => {
+                        const { data, error } = await (await import("@/integrations/supabase/client")).supabase.from("documents").insert({
+                          event_id: event.id,
+                          dept_id: dept.id,
+                          name: file.name,
+                          folder: "Other",
+                          file_url: URL.createObjectURL(file),
+                          file_size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+                          uploaded_by: currentUser.id,
+                          visibility: "internal",
+                        }).select().single();
+                        if (error) console.error("addDoc error:", error);
+                        return data;
+                      }};
+                      await dbAddDoc({});
+                      toast({ title: "Document uploaded" });
+                    }} />
+                  </label>
+                </div>
+                {deptDocs.length > 0 ? (
+                  <div className="space-y-1">
+                    {deptDocs.map(d => (
+                      <div key={d.id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-secondary/50">
+                        <FileText size={14} className="text-muted-foreground shrink-0" />
+                        <span className="text-sm flex-1 truncate">{d.name}</span>
+                        <span className="text-[11px] text-muted-foreground">{d.file_size}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No documents yet.</p>
+                )}
               </div>
             </div>
           </>
