@@ -545,11 +545,40 @@ export default function EventDetailPage() {
       )}
 
       {/* ============ BILLING ============ */}
-      {tab === "billing" && (
+      {tab === "billing" && (() => {
+        const [showAddBill, setShowAddBill] = useState(false);
+        const [billForm, setBillForm] = useState({
+          description: "", vendor_name: "", amount: "", category: "",
+          due_date: "", invoice_file: null as File | null,
+        });
+
+        const handleAddBillSubmit = async () => {
+          if (!billForm.description.trim() || !billForm.vendor_name.trim()) {
+            toast({ title: "Description and vendor are required", variant: "destructive" }); return;
+          }
+          if (!billForm.invoice_file) {
+            toast({ title: "Invoice attachment is mandatory", variant: "destructive" }); return;
+          }
+          await dbAddBill({
+            event_id: event.id,
+            vendor_name: billForm.vendor_name.trim(),
+            description: billForm.description.trim(),
+            amount: parseFloat(billForm.amount) || 0,
+            category: billForm.category || undefined,
+            due_date: billForm.due_date || undefined,
+            submitted_by: currentUser.id,
+            invoice_file: billForm.invoice_file.name,
+          });
+          setShowAddBill(false);
+          setBillForm({ description: "", vendor_name: "", amount: "", category: "", due_date: "", invoice_file: null });
+          toast({ title: "Billing item added" });
+        };
+
+        return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{evBills.length} billing items</p>
-            <button className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+            <button onClick={() => setShowAddBill(true)} className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
               <Plus size={14} /> Add Billing Item
             </button>
           </div>
@@ -584,8 +613,61 @@ export default function EventDetailPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Add Bill Sidesheet */}
+          {showAddBill && (
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddBill(false)} />
+              <div className="fixed right-0 top-0 z-[61] h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Add Billing Item</h3>
+                    <button onClick={() => setShowAddBill(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Description <span className="text-destructive">*</span></label>
+                    <input value={billForm.description} onChange={e => setBillForm(f => ({ ...f, description: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="What is this expense for?" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Vendor <span className="text-destructive">*</span></label>
+                    <input value={billForm.vendor_name} onChange={e => setBillForm(f => ({ ...f, vendor_name: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Vendor name" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Amount (₹)</label>
+                      <input type="number" value={billForm.amount} onChange={e => setBillForm(f => ({ ...f, amount: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="0" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Category</label>
+                      <input value={billForm.category} onChange={e => setBillForm(f => ({ ...f, category: e.target.value }))}
+                        className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Logistics" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Due Date</label>
+                    <input type="date" value={billForm.due_date} onChange={e => setBillForm(f => ({ ...f, due_date: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Invoice Attachment <span className="text-destructive">*</span></label>
+                    <input type="file" onChange={e => setBillForm(f => ({ ...f, invoice_file: e.target.files?.[0] || null }))}
+                      className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-secondary file:text-foreground hover:file:bg-selected" />
+                    {billForm.invoice_file && <p className="text-xs text-muted-foreground mt-1">{billForm.invoice_file.name}</p>}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button onClick={() => setShowAddBill(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                    <button onClick={handleAddBillSubmit} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Add Item</button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ============ BUDGET ============ */}
       {tab === "budget" && (
