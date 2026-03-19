@@ -21,7 +21,7 @@ interface AuthContextType {
   hasSelectedRole: boolean;
   isAuthenticated: boolean;
   loading: boolean;
-  signUp: (name: string, email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (name: string, email: string, password: string, orgName?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   selectRole: (role: Role) => Promise<{ error: string | null }>;
@@ -116,12 +116,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (name: string, email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (name: string, email: string, password: string, orgName?: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name },
+        data: { name, org_name: orgName },
         emailRedirectTo: window.location.origin,
       },
     });

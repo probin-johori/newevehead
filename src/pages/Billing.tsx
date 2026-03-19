@@ -17,7 +17,7 @@ const BILL_STATUSES: { key: string; label: string }[] = [
 ];
 
 export default function BillingPage() {
-  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills, departments, profiles, billEditLogs, setBillEditLogs, taskComments, setTaskComments } = useMockData();
+  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills, departments, profiles, billEditLogs, setBillEditLogs, taskComments, setTaskComments, addBill: dbAddBill, updateBill: dbUpdateBill, deleteBill: dbDeleteBill, addComment: dbAddComment } = useMockData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
@@ -88,29 +88,29 @@ export default function BillingPage() {
   // Use taskComments as a shared comment store (bill comments use bill ID as task_id)
   const billComments = bill ? taskComments.filter(c => c.task_id === `bill_${bill.id}`) : [];
 
-  const handleMarkPaid = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as BillStatus, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
+  const handleMarkPaid = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "settled" as BillStatus, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] });
     toast({ title: "Marked as Paid" });
   };
 
-  const handleReject = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "rejected" as BillStatus } : b));
+  const handleReject = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "rejected" as BillStatus });
     toast({ title: "Bill rejected" });
   };
 
-  const handleOnHold = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "on-hold" as any } : b));
+  const handleOnHold = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "on-hold" as any });
     toast({ title: "Bill put on hold" });
   };
 
-  const handleDelete = (billId: string) => {
-    setBills(bills.filter(b => b.id !== billId));
+  const handleDelete = async (billId: string) => {
+    await dbDeleteBill(billId);
     setConfirmDelete(null);
     setSelectedBill(null);
     toast({ title: "Bill deleted" });
   };
 
-  const handleAddBill = () => {
+  const handleAddBill = async () => {
     if (!addForm.description.trim() || !addForm.vendor_name.trim()) {
       toast({ title: "Description and vendor are required", variant: "destructive" });
       return;
@@ -119,43 +119,31 @@ export default function BillingPage() {
       toast({ title: "Invoice attachment is mandatory", variant: "destructive" });
       return;
     }
-    const newBill: Bill = {
-      id: `b_new_${Date.now()}`,
-      event_id: addForm.event_id || events[0]?.id || "e1",
-      dept_id: "d1",
+    await dbAddBill({
+      event_id: addForm.event_id || events[0]?.id || "",
       vendor_name: addForm.vendor_name,
       description: addForm.description,
       amount: parseFloat(addForm.amount) || 0,
-      advance_amount: 0,
-      bill_file_url: addForm.invoice_file?.name || "",
-      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
       status: addForm.status as BillStatus,
-      advance_status: "not-given",
       submitted_by: currentUser.id,
-      dept_verified_by: null,
-      ca_approved_by: null,
-      settled_by: null,
-      submitted_at: new Date().toISOString(),
-      dept_verified_at: null,
-      ca_approved_at: null,
-      settled_at: null,
       category: addForm.category || undefined,
       due_date: addForm.due_date || undefined,
       invoice_file: addForm.invoice_file?.name,
-    };
-    setBills([...bills, newBill]);
+      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
+    });
     setShowAddModal(false);
     setAddForm({ description: "", vendor_name: "", amount: "", category: "", event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null });
     toast({ title: "Billing item added" });
   };
 
   // Discussion handlers
-  const handleSubmitComment = () => {
+  const handleSubmitComment = async () => {
     if (!newComment.trim() || !bill) return;
-    setTaskComments([...taskComments, {
-      id: `bc_${Date.now()}`, task_id: `bill_${bill.id}`, author_id: currentUser.id,
-      body: newComment.trim(), created_at: new Date().toISOString(),
-    }]);
+    await dbAddComment({
+      task_id: `bill_${bill.id}`,
+      author_id: currentUser.id,
+      body: newComment.trim(),
+    });
     setNewComment("");
   };
 

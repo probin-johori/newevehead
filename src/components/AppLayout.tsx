@@ -20,7 +20,7 @@ export default function AppLayout() {
         {/* Nav panel + main content */}
         <div className="flex flex-1 min-h-0 md:rounded-xl bg-background md:border md:border-stroke overflow-hidden">
           {/* Nav panel — hidden on mobile */}
-          <div className="hidden md:block">
+          <div className="hidden md:flex h-full">
             <NavPanel />
           </div>
           <div className="hidden md:block w-px bg-stroke shrink-0" />
