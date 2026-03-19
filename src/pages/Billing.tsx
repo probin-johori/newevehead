@@ -137,12 +137,13 @@ export default function BillingPage() {
   };
 
   // Discussion handlers
-  const handleSubmitComment = () => {
+  const handleSubmitComment = async () => {
     if (!newComment.trim() || !bill) return;
-    setTaskComments([...taskComments, {
-      id: `bc_${Date.now()}`, task_id: `bill_${bill.id}`, author_id: currentUser.id,
-      body: newComment.trim(), created_at: new Date().toISOString(),
-    }]);
+    await dbAddComment({
+      task_id: `bill_${bill.id}`,
+      author_id: currentUser.id,
+      body: newComment.trim(),
+    });
     setNewComment("");
   };
 
