@@ -110,7 +110,7 @@ export default function BillingPage() {
     toast({ title: "Bill deleted" });
   };
 
-  const handleAddBill = () => {
+  const handleAddBill = async () => {
     if (!addForm.description.trim() || !addForm.vendor_name.trim()) {
       toast({ title: "Description and vendor are required", variant: "destructive" });
       return;
@@ -119,31 +119,18 @@ export default function BillingPage() {
       toast({ title: "Invoice attachment is mandatory", variant: "destructive" });
       return;
     }
-    const newBill: Bill = {
-      id: `b_new_${Date.now()}`,
-      event_id: addForm.event_id || events[0]?.id || "e1",
-      dept_id: "d1",
+    await dbAddBill({
+      event_id: addForm.event_id || events[0]?.id || "",
       vendor_name: addForm.vendor_name,
       description: addForm.description,
       amount: parseFloat(addForm.amount) || 0,
-      advance_amount: 0,
-      bill_file_url: addForm.invoice_file?.name || "",
-      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
       status: addForm.status as BillStatus,
-      advance_status: "not-given",
       submitted_by: currentUser.id,
-      dept_verified_by: null,
-      ca_approved_by: null,
-      settled_by: null,
-      submitted_at: new Date().toISOString(),
-      dept_verified_at: null,
-      ca_approved_at: null,
-      settled_at: null,
       category: addForm.category || undefined,
       due_date: addForm.due_date || undefined,
       invoice_file: addForm.invoice_file?.name,
-    };
-    setBills([...bills, newBill]);
+      invoice_number: `INV-${Date.now().toString().slice(-6)}`,
+    });
     setShowAddModal(false);
     setAddForm({ description: "", vendor_name: "", amount: "", category: "", event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null });
     toast({ title: "Billing item added" });
