@@ -17,7 +17,7 @@ const BILL_STATUSES: { key: string; label: string }[] = [
 ];
 
 export default function BillingPage() {
-  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills, departments, profiles, billEditLogs, setBillEditLogs, taskComments, setTaskComments } = useMockData();
+  const { bills, events, getProfile, getDepartment, getEvent, currentUser, isFreePlan, setBills, departments, profiles, billEditLogs, setBillEditLogs, taskComments, setTaskComments, addBill: dbAddBill, updateBill: dbUpdateBill, deleteBill: dbDeleteBill, addComment: dbAddComment } = useMockData();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
