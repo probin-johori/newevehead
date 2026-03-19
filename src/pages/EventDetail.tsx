@@ -50,8 +50,8 @@ export default function EventDetailPage() {
     addEvent: dbAddEvent, updateEvent: dbUpdateEvent,
     addDepartment: dbAddDepartment, deleteDepartment: dbDeleteDepartment, updateDepartment: dbUpdateDepartment,
     addTask: dbAddTask, updateTask: dbUpdateTask,
-    updateBill: dbUpdateBill,
-    addDocument: dbAddDocument,
+    updateBill: dbUpdateBill, addBill: dbAddBill,
+    addDocument: dbAddDocument, documents,
   } = useMockData();
   const assignableProfiles = teamProfiles.length > 0 ? teamProfiles : profiles;
 
