@@ -67,6 +67,10 @@ export default function EventDetailPage() {
   const [addTaskForm, setAddTaskForm] = useState<AddTaskForm>({ title: "", dept_id: "", assignee_id: "", priority: "normal", deadline: "" });
   const [showAddDept, setShowAddDept] = useState(false);
   const [removeDeptConfirm, setRemoveDeptConfirm] = useState<string | null>(null);
+  const [showAddBill, setShowAddBill] = useState(false);
+  const [billForm, setBillForm] = useState({ description: "", vendor_name: "", amount: "", category: "", due_date: "", invoice_file: null as File | null });
+  const [showAddDoc, setShowAddDoc] = useState(false);
+  const [docForm, setDocForm] = useState({ title: "", folder: "Other", file: null as File | null });
 
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
