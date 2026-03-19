@@ -123,8 +123,8 @@ export function NavPanel() {
   };
 
   return (
-    <div id="zh-nav-panel" className="relative flex-shrink-0" style={{ width }}>
-      <aside className="h-full overflow-y-auto bg-nav-panel" style={{ width }}>
+    <div id="zh-nav-panel" className="relative flex-shrink-0 h-full" style={{ width }}>
+      <aside className="h-full overflow-y-auto bg-nav-panel" style={{ width, minHeight: '100%' }}>
         <div className="p-4 space-y-5">
           {/* ===== HOME TAB ===== */}
           {mainTab === "home" && (
