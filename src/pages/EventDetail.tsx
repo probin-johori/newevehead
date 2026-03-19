@@ -550,11 +550,6 @@ export default function EventDetailPage() {
 
       {/* ============ BILLING ============ */}
       {tab === "billing" && (() => {
-        const [showAddBill, setShowAddBill] = useState(false);
-        const [billForm, setBillForm] = useState({
-          description: "", vendor_name: "", amount: "", category: "",
-          due_date: "", invoice_file: null as File | null,
-        });
 
         const handleAddBillSubmit = async () => {
           if (!billForm.description.trim() || !billForm.vendor_name.trim()) {
