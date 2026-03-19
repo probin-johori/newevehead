@@ -88,23 +88,23 @@ export default function BillingPage() {
   // Use taskComments as a shared comment store (bill comments use bill ID as task_id)
   const billComments = bill ? taskComments.filter(c => c.task_id === `bill_${bill.id}`) : [];
 
-  const handleMarkPaid = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "settled" as BillStatus, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] } : b));
+  const handleMarkPaid = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "settled" as BillStatus, settled_by: currentUser.id, settled_at: new Date().toISOString(), paid_date: new Date().toISOString().split("T")[0] });
     toast({ title: "Marked as Paid" });
   };
 
-  const handleReject = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "rejected" as BillStatus } : b));
+  const handleReject = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "rejected" as BillStatus });
     toast({ title: "Bill rejected" });
   };
 
-  const handleOnHold = (billId: string) => {
-    setBills(bills.map(b => b.id === billId ? { ...b, status: "on-hold" as any } : b));
+  const handleOnHold = async (billId: string) => {
+    await dbUpdateBill(billId, { status: "on-hold" as any });
     toast({ title: "Bill put on hold" });
   };
 
-  const handleDelete = (billId: string) => {
-    setBills(bills.filter(b => b.id !== billId));
+  const handleDelete = async (billId: string) => {
+    await dbDeleteBill(billId);
     setConfirmDelete(null);
     setSelectedBill(null);
     toast({ title: "Bill deleted" });
