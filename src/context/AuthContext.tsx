@@ -21,7 +21,7 @@ interface AuthContextType {
   hasSelectedRole: boolean;
   isAuthenticated: boolean;
   loading: boolean;
-  signUp: (name: string, email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (name: string, email: string, password: string, orgName?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   selectRole: (role: Role) => Promise<{ error: string | null }>;
