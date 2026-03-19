@@ -711,11 +711,32 @@ export default function EventDetailPage() {
       )}
 
       {/* ============ DOCUMENTS ============ */}
-      {tab === "documents" && (
+      {tab === "documents" && (() => {
+        const [showAddDoc, setShowAddDoc] = useState(false);
+        const [docForm, setDocForm] = useState({ title: "", folder: "Other", file: null as File | null });
+
+        const handleAddDocSubmit = async () => {
+          if (!docForm.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
+          if (!docForm.file) { toast({ title: "File attachment is mandatory", variant: "destructive" }); return; }
+          await dbAddDocument({
+            event_id: event.id,
+            name: docForm.title.trim(),
+            folder: docForm.folder || "Other",
+            file_url: URL.createObjectURL(docForm.file),
+            file_size: `${(docForm.file.size / 1024 / 1024).toFixed(1)} MB`,
+            uploaded_by: currentUser.id,
+            visibility: "internal",
+          });
+          setShowAddDoc(false);
+          setDocForm({ title: "", folder: "Other", file: null });
+          toast({ title: "Document uploaded" });
+        };
+
+        return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{docs.length} documents</p>
-            <button className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+            <button onClick={() => setShowAddDoc(true)} className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
               <Plus size={14} /> Upload Document
             </button>
           </div>
@@ -744,8 +765,46 @@ export default function EventDetailPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Add Document Sidesheet */}
+          {showAddDoc && (
+            <>
+              <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddDoc(false)} />
+              <div className="fixed right-0 top-0 z-[61] h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Upload Document</h3>
+                    <button onClick={() => setShowAddDoc(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Document Title <span className="text-destructive">*</span></label>
+                    <input value={docForm.title} onChange={e => setDocForm(f => ({ ...f, title: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Document name" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Folder</label>
+                    <select value={docForm.folder} onChange={e => setDocForm(f => ({ ...f, folder: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                      {["Contracts", "Layouts", "Permits", "Other"].map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">File <span className="text-destructive">*</span></label>
+                    <input type="file" onChange={e => setDocForm(f => ({ ...f, file: e.target.files?.[0] || null }))}
+                      className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-secondary file:text-foreground hover:file:bg-selected" />
+                    {docForm.file && <p className="text-xs text-muted-foreground mt-1">{docForm.file.name}</p>}
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <button onClick={() => setShowAddDoc(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                    <button onClick={handleAddDocSubmit} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Upload</button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Bill Detail Drawer */}
       {bill && (
