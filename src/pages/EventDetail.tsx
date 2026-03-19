@@ -711,8 +711,6 @@ export default function EventDetailPage() {
 
       {/* ============ DOCUMENTS ============ */}
       {tab === "documents" && (() => {
-        const [showAddDoc, setShowAddDoc] = useState(false);
-        const [docForm, setDocForm] = useState({ title: "", folder: "Other", file: null as File | null });
 
         const handleAddDocSubmit = async () => {
           if (!docForm.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
