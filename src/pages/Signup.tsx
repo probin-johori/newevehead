@@ -8,6 +8,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -19,10 +20,11 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !password) { setError("All fields are required"); return; }
+    if (!orgName.trim()) { setError("Organisation name is required"); return; }
     if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
     setLoading(true);
     setError("");
-    const { error: err } = await signUp(name, email, password);
+    const { error: err } = await signUp(name, email, password, orgName.trim());
     setLoading(false);
     if (err) setError(err);
     else setSuccess(true);
@@ -55,6 +57,11 @@ export default function SignupPage() {
             <label className="text-sm font-medium">Full Name</label>
             <input type="text" value={name} onChange={e => setName(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="John Doe" />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Organisation Name</label>
+            <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Your company or team name" />
           </div>
           <div>
             <label className="text-sm font-medium">Email</label>
