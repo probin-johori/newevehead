@@ -88,7 +88,7 @@ export function TopBar() {
             <div className="absolute left-0 top-10 z-50 w-[260px] rounded-xl border border-stroke bg-card shadow-[0_4px_16px_rgba(0,0,0,0.10)] py-1">
               <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Organisations</div>
               {organisations.map(org => (
-                <button key={org.id} onClick={() => setOrgOpen(false)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-selected transition-colors">
+                <button key={org.id} onClick={() => { switchOrganisation(org.id); setOrgOpen(false); navigate("/dashboard"); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-selected transition-colors">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-rose-500 text-[9px] font-bold text-white shrink-0">
                     {org.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                   </div>
