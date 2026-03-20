@@ -344,6 +344,8 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
         confirmLabel="Confirm" onConfirm={() => confirmEdit && handleEditComment(confirmEdit)} onCancel={() => setConfirmEdit(null)} />
       <ConfirmDialog open={!!confirmDeleteSubtask} title="Delete Subtask" message="Delete this subtask? This cannot be undone."
         confirmLabel="Delete" destructive onConfirm={() => confirmDeleteSubtask && deleteSubtask(confirmDeleteSubtask)} onCancel={() => setConfirmDeleteSubtask(null)} />
+      <ConfirmDialog open={confirmDeleteTask} title="Delete Task?" message="This will permanently delete this task and all its subtasks. This cannot be undone."
+        confirmLabel="Delete" destructive onConfirm={handleDeleteTask} onCancel={() => setConfirmDeleteTask(false)} />
     </>
   );
 }

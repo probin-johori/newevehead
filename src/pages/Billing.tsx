@@ -31,7 +31,7 @@ export default function BillingPage() {
   // Add billing form state
   const [addForm, setAddForm] = useState({
     description: "", vendor_name: "", amount: "", category: "",
-    event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null as File | null,
+    event_id: "", dept_id: "", due_date: "", status: "pending", notes: "", invoice_file: null as File | null,
   });
 
   // Discussion state
