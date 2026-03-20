@@ -45,8 +45,10 @@ interface TaskDetailSheetProps {
 export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSheetProps) {
   const navigate = useNavigate();
   const {
-    tasks, setTasks, getProfile, getEvent, getDepartment, currentUser,
-    getCommentsByTask, taskComments, setTaskComments, events, profiles
+    tasks, setTasks, getProfile, getEvent, getDepartment, getDeptsByEvent, currentUser,
+    getCommentsByTask, taskComments, setTaskComments, events, profiles,
+    updateTask: dbUpdateTask, deleteTask: dbDeleteTask, addComment: dbAddComment,
+    departments,
   } = useMockData();
 
   const [newComment, setNewComment] = useState("");
@@ -60,11 +62,13 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
   const [editTitleValue, setEditTitleValue] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDescValue, setEditDescValue] = useState("");
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
 
   useScrollLock(!!taskId);
 
   const task = taskId ? tasks.find(t => t.id === taskId) : null;
   const comments = task ? getCommentsByTask(task.id) : [];
+  const eventDepts = task ? getDeptsByEvent(task.event_id) : [];
 
   if (!task) return null;
 
@@ -73,6 +77,7 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
   const pctDone = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
 
   const updateTask = (updates: Partial<Task>) => {
+    dbUpdateTask(task.id, updates);
     setTasks(tasks.map(t => t.id === task.id ? { ...t, ...updates } : t));
   };
 
@@ -100,13 +105,19 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
     toast({ title: "Subtask deleted" });
   };
 
-  const handleSubmitComment = () => {
+  const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
-    setTaskComments([...taskComments, {
-      id: `tc_new_${Date.now()}`, task_id: task.id, author_id: currentUser.id,
-      body: newComment.trim(), created_at: new Date().toISOString(),
-    }]);
+    await dbAddComment({
+      task_id: task.id, author_id: currentUser.id, body: newComment.trim(),
+    });
     setNewComment("");
+  };
+
+  const handleDeleteTask = async () => {
+    await dbDeleteTask(task.id);
+    setConfirmDeleteTask(false);
+    onClose();
+    toast({ title: "Task deleted" });
   };
 
   const handleDeleteComment = (commentId: string) => {
@@ -185,7 +196,10 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4 shrink-0"><X size={20} /></button>
+          <div className="flex items-center gap-2 ml-4 shrink-0">
+            <button onClick={() => setConfirmDeleteTask(true)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash size={18} /></button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+          </div>
         </div>
 
         {/* Editable fields */}
@@ -211,7 +225,11 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p>
-            <p className="text-sm">{getDepartment(task.dept_id)?.name || "—"}</p>
+            <select value={task.dept_id} onChange={e => updateTask({ dept_id: e.target.value })}
+              className="w-full rounded-lg border border-stroke bg-secondary px-2 py-1.5 text-sm focus:outline-none">
+              <option value="">No department</option>
+              {eventDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -326,6 +344,8 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
         confirmLabel="Confirm" onConfirm={() => confirmEdit && handleEditComment(confirmEdit)} onCancel={() => setConfirmEdit(null)} />
       <ConfirmDialog open={!!confirmDeleteSubtask} title="Delete Subtask" message="Delete this subtask? This cannot be undone."
         confirmLabel="Delete" destructive onConfirm={() => confirmDeleteSubtask && deleteSubtask(confirmDeleteSubtask)} onCancel={() => setConfirmDeleteSubtask(null)} />
+      <ConfirmDialog open={confirmDeleteTask} title="Delete Task?" message="This will permanently delete this task and all its subtasks. This cannot be undone."
+        confirmLabel="Delete" destructive onConfirm={handleDeleteTask} onCancel={() => setConfirmDeleteTask(false)} />
     </>
   );
 }

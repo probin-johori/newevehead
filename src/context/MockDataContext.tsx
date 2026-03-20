@@ -288,6 +288,10 @@ interface MockDataContextType {
   // DB operations
   addEvent: (event: Omit<Event, "id">) => Promise<Event | null>;
   updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  addOrganisation: (name: string) => Promise<Organisation | null>;
+  updateOrganisation: (id: string, updates: Partial<Organisation>) => Promise<void>;
+  switchOrganisation: (orgId: string) => void;
   addDepartment: (dept: Omit<Department, "id">) => Promise<Department | null>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
@@ -714,6 +718,49 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     await supabase.from("events").update(dbUpdates).eq("id", id);
   };
 
+  const deleteEvent = async (id: string) => {
+    // Delete related data first
+    await supabase.from("tasks").delete().eq("event_id", id);
+    await supabase.from("departments").delete().eq("event_id", id);
+    await supabase.from("bills").delete().eq("event_id", id);
+    await supabase.from("documents").delete().eq("event_id", id);
+    await supabase.from("activities").delete().eq("event_id", id);
+    await supabase.from("events").delete().eq("id", id);
+  };
+
+  const addOrganisation = async (name: string): Promise<Organisation | null> => {
+    if (!auth.user) return null;
+    const { data, error } = await supabase.from("organisations").insert({
+      name,
+      created_by: auth.user.id,
+      active: true,
+    }).select().single();
+    if (error) { console.error("addOrganisation error:", error); return null; }
+    // Add current user as admin of new org
+    if (data) {
+      await supabase.from("team_members").insert({
+        user_id: auth.user.id,
+        org_id: data.id,
+        role: "admin",
+        invited_by: auth.user.id,
+      });
+    }
+    return data ? { id: data.id, name: data.name, logo: data.logo, active: false } : null;
+  };
+
+  const updateOrganisation = async (id: string, updates: Partial<Organisation>) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.logo !== undefined) dbUpdates.logo = updates.logo;
+    await supabase.from("organisations").update(dbUpdates).eq("id", id);
+  };
+
+  const switchOrganisation = (newOrgId: string) => {
+    setOrgId(newOrgId);
+    setOrganisations(prev => prev.map(o => ({ ...o, active: o.id === newOrgId })));
+    initialLoadDone.current = false;
+  };
+
   const addDepartment = async (dept: Omit<Department, "id">): Promise<Department | null> => {
     const { data, error } = await supabase.from("departments").insert({
       event_id: dept.event_id,
@@ -918,7 +965,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       getProfile, getEvent, getDepartment, getDeptsByEvent, getTasksByEvent, getTasksByDept,
       getCommentsByTask, getBillsByEvent, getBillEditLogs, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
       isFreePlan: false,
-      addEvent, updateEvent,
+      addEvent, updateEvent, deleteEvent,
+      addOrganisation, updateOrganisation, switchOrganisation,
       addDepartment, updateDepartment, deleteDepartment,
       addTask, updateTask, deleteTask,
       addBill, updateBill, deleteBill,

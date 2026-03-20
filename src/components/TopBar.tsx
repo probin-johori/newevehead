@@ -2,15 +2,18 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MagnifyingGlass, Bell, Check, CaretDown, GearSix, SignOut, User, Plus, CheckCircle } from "@phosphor-icons/react";
 import { useMockData } from "@/context/MockDataContext";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function TopBar() {
-  const { getUserNotifications, markAllNotificationsRead, markNotificationRead, currentUser, organisations, events, tasks, profiles, departments, documents } = useMockData();
+  const { getUserNotifications, markAllNotificationsRead, markNotificationRead, currentUser, organisations, events, tasks, profiles, departments, documents, addOrganisation, updateOrganisation, switchOrganisation } = useMockData();
   const { signOut, profile: authProfile, role: authRole } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
+  const [newOrgName, setNewOrgName] = useState("");
+  const [showAddOrg, setShowAddOrg] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
@@ -86,7 +89,7 @@ export function TopBar() {
             <div className="absolute left-0 top-10 z-50 w-[260px] rounded-xl border border-stroke bg-card shadow-[0_4px_16px_rgba(0,0,0,0.10)] py-1">
               <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Organisations</div>
               {organisations.map(org => (
-                <button key={org.id} onClick={() => setOrgOpen(false)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-selected transition-colors">
+                <button key={org.id} onClick={() => { switchOrganisation(org.id); setOrgOpen(false); navigate("/dashboard"); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-selected transition-colors">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-rose-400 to-rose-500 text-[9px] font-bold text-white shrink-0">
                     {org.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
                   </div>
@@ -95,9 +98,19 @@ export function TopBar() {
                 </button>
               ))}
               <div className="border-t border-stroke mt-1 pt-1">
-                <button className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-selected transition-colors">
-                  <Plus size={16} /> Add Organisation
-                </button>
+                {showAddOrg ? (
+                  <div className="px-3 py-2 flex gap-2">
+                    <input autoFocus value={newOrgName} onChange={e => setNewOrgName(e.target.value)}
+                      onKeyDown={async e => { if (e.key === "Enter" && newOrgName.trim()) { await addOrganisation(newOrgName.trim()); setNewOrgName(""); setShowAddOrg(false); toast({ title: "Organisation created" }); } }}
+                      placeholder="Org name..." className="flex-1 rounded-lg border border-stroke bg-secondary px-2 py-1.5 text-sm focus:outline-none" />
+                    <button onClick={async () => { if (newOrgName.trim()) { await addOrganisation(newOrgName.trim()); setNewOrgName(""); setShowAddOrg(false); toast({ title: "Organisation created" }); } }}
+                      className="rounded-full bg-foreground px-3 py-1 text-xs text-background font-medium">Add</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddOrg(true)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-selected transition-colors">
+                    <Plus size={16} /> Add Organisation
+                  </button>
+                )}
               </div>
             </div>
           </>
