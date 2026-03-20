@@ -62,19 +62,19 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
   const [editTitleValue, setEditTitleValue] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDescValue, setEditDescValue] = useState("");
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
 
   useScrollLock(!!taskId);
 
   const task = taskId ? tasks.find(t => t.id === taskId) : null;
   const comments = task ? getCommentsByTask(task.id) : [];
+  const eventDepts = task ? getDeptsByEvent(task.event_id) : [];
 
   if (!task) return null;
 
   const doneSubtasks = task.subtasks.filter(s => s.completed).length;
   const totalSubtasks = task.subtasks.length;
   const pctDone = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
-
-  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
 
   const updateTask = (updates: Partial<Task>) => {
     dbUpdateTask(task.id, updates);
