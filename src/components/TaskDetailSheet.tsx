@@ -196,7 +196,10 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground ml-4 shrink-0"><X size={20} /></button>
+          <div className="flex items-center gap-2 ml-4 shrink-0">
+            <button onClick={() => setConfirmDeleteTask(true)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash size={18} /></button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+          </div>
         </div>
 
         {/* Editable fields */}
