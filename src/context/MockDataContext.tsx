@@ -288,6 +288,10 @@ interface MockDataContextType {
   // DB operations
   addEvent: (event: Omit<Event, "id">) => Promise<Event | null>;
   updateEvent: (id: string, updates: Partial<Event>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  addOrganisation: (name: string) => Promise<Organisation | null>;
+  updateOrganisation: (id: string, updates: Partial<Organisation>) => Promise<void>;
+  switchOrganisation: (orgId: string) => void;
   addDepartment: (dept: Omit<Department, "id">) => Promise<Department | null>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
