@@ -12,7 +12,8 @@ export function TopBar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [orgOpen, setOrgOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [newOrgName, setNewOrgName] = useState("");
+  const [showAddOrg, setShowAddOrg] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const navigate = useNavigate();
   const userNotifs = getUserNotifications();
