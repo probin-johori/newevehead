@@ -119,8 +119,13 @@ export default function BillingPage() {
       toast({ title: "Invoice attachment is mandatory", variant: "destructive" });
       return;
     }
+    if (!addForm.dept_id) {
+      toast({ title: "Department is required", variant: "destructive" });
+      return;
+    }
     await dbAddBill({
       event_id: addForm.event_id || events[0]?.id || "",
+      dept_id: addForm.dept_id,
       vendor_name: addForm.vendor_name,
       description: addForm.description,
       amount: parseFloat(addForm.amount) || 0,
@@ -132,7 +137,7 @@ export default function BillingPage() {
       invoice_number: `INV-${Date.now().toString().slice(-6)}`,
     });
     setShowAddModal(false);
-    setAddForm({ description: "", vendor_name: "", amount: "", category: "", event_id: "", due_date: "", status: "pending", notes: "", invoice_file: null });
+    setAddForm({ description: "", vendor_name: "", amount: "", category: "", event_id: "", dept_id: "", due_date: "", status: "pending", notes: "", invoice_file: null });
     toast({ title: "Billing item added" });
   };
 
