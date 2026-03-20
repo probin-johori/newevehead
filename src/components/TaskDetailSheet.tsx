@@ -45,8 +45,10 @@ interface TaskDetailSheetProps {
 export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSheetProps) {
   const navigate = useNavigate();
   const {
-    tasks, setTasks, getProfile, getEvent, getDepartment, currentUser,
-    getCommentsByTask, taskComments, setTaskComments, events, profiles
+    tasks, setTasks, getProfile, getEvent, getDepartment, getDeptsByEvent, currentUser,
+    getCommentsByTask, taskComments, setTaskComments, events, profiles,
+    updateTask: dbUpdateTask, deleteTask: dbDeleteTask, addComment: dbAddComment,
+    departments,
   } = useMockData();
 
   const [newComment, setNewComment] = useState("");
