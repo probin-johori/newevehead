@@ -97,9 +97,19 @@ export function TopBar() {
                 </button>
               ))}
               <div className="border-t border-stroke mt-1 pt-1">
-                <button className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-selected transition-colors">
-                  <Plus size={16} /> Add Organisation
-                </button>
+                {showAddOrg ? (
+                  <div className="px-3 py-2 flex gap-2">
+                    <input autoFocus value={newOrgName} onChange={e => setNewOrgName(e.target.value)}
+                      onKeyDown={async e => { if (e.key === "Enter" && newOrgName.trim()) { await addOrganisation(newOrgName.trim()); setNewOrgName(""); setShowAddOrg(false); toast({ title: "Organisation created" }); } }}
+                      placeholder="Org name..." className="flex-1 rounded-lg border border-stroke bg-secondary px-2 py-1.5 text-sm focus:outline-none" />
+                    <button onClick={async () => { if (newOrgName.trim()) { await addOrganisation(newOrgName.trim()); setNewOrgName(""); setShowAddOrg(false); toast({ title: "Organisation created" }); } }}
+                      className="rounded-full bg-foreground px-3 py-1 text-xs text-background font-medium">Add</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowAddOrg(true)} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-selected transition-colors">
+                    <Plus size={16} /> Add Organisation
+                  </button>
+                )}
               </div>
             </div>
           </>
