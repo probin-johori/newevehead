@@ -74,7 +74,10 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
   const totalSubtasks = task.subtasks.length;
   const pctDone = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0;
 
+  const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
+
   const updateTask = (updates: Partial<Task>) => {
+    dbUpdateTask(task.id, updates);
     setTasks(tasks.map(t => t.id === task.id ? { ...t, ...updates } : t));
   };
 
