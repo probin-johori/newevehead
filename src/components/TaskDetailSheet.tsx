@@ -222,7 +222,11 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p>
-            <p className="text-sm">{getDepartment(task.dept_id)?.name || "—"}</p>
+            <select value={task.dept_id} onChange={e => updateTask({ dept_id: e.target.value })}
+              className="w-full rounded-lg border border-stroke bg-secondary px-2 py-1.5 text-sm focus:outline-none">
+              <option value="">No department</option>
+              {eventDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
           </div>
         </div>
 
