@@ -105,13 +105,19 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
     toast({ title: "Subtask deleted" });
   };
 
-  const handleSubmitComment = () => {
+  const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
-    setTaskComments([...taskComments, {
-      id: `tc_new_${Date.now()}`, task_id: task.id, author_id: currentUser.id,
-      body: newComment.trim(), created_at: new Date().toISOString(),
-    }]);
+    await dbAddComment({
+      task_id: task.id, author_id: currentUser.id, body: newComment.trim(),
+    });
     setNewComment("");
+  };
+
+  const handleDeleteTask = async () => {
+    await dbDeleteTask(task.id);
+    setConfirmDeleteTask(false);
+    onClose();
+    toast({ title: "Task deleted" });
   };
 
   const handleDeleteComment = (commentId: string) => {
