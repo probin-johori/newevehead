@@ -553,6 +553,7 @@ export type Database = {
           created_by: string | null
           deadline: string | null
           dept_id: string | null
+          dept_ids: string[] | null
           description: string
           event_id: string
           id: string
@@ -568,6 +569,7 @@ export type Database = {
           created_by?: string | null
           deadline?: string | null
           dept_id?: string | null
+          dept_ids?: string[] | null
           description?: string
           event_id: string
           id?: string
@@ -583,6 +585,7 @@ export type Database = {
           created_by?: string | null
           deadline?: string | null
           dept_id?: string | null
+          dept_ids?: string[] | null
           description?: string
           event_id?: string
           id?: string
