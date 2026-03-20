@@ -8,7 +8,7 @@ import { TaskDetailSheet } from "@/components/TaskDetailSheet";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Trash } from "@phosphor-icons/react";
+import { Trash, ArrowLeft, MapPin, PencilSimple as PencilIcon } from "@phosphor-icons/react";
 import {
   Flag, Plus, Eye, FileText, X, PencilSimple, ArrowRight,
   CaretDown, CaretRight, ImageSquare
@@ -16,7 +16,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { EventImageUpload } from "@/components/EventImageUpload";
 
-type Tab = "overview" | "departments" | "tasks" | "billing" | "budget" | "documents";
+type Tab = "overview" | "departments" | "tasks" | "billing" | "documents";
 
 interface AddTaskForm {
   title: string;
@@ -47,9 +47,9 @@ export default function EventDetailPage() {
     getProfile, getDepartment, getActivitiesByEvent, deptHealth,
     currentUser, bills, events, setEvents, setBills,
     tasks: allTasks, setTasks, departments, setDepartments, profiles, teamProfiles,
-    addEvent: dbAddEvent, updateEvent: dbUpdateEvent,
+    addEvent: dbAddEvent, updateEvent: dbUpdateEvent, deleteEvent: dbDeleteEvent,
     addDepartment: dbAddDepartment, deleteDepartment: dbDeleteDepartment, updateDepartment: dbUpdateDepartment,
-    addTask: dbAddTask, updateTask: dbUpdateTask,
+    addTask: dbAddTask, updateTask: dbUpdateTask, deleteTask: dbDeleteTask,
     updateBill: dbUpdateBill, addBill: dbAddBill,
     addDocument: dbAddDocument, documents,
   } = useMockData();
@@ -68,17 +68,29 @@ export default function EventDetailPage() {
   const [showAddDept, setShowAddDept] = useState(false);
   const [removeDeptConfirm, setRemoveDeptConfirm] = useState<string | null>(null);
   const [showAddBill, setShowAddBill] = useState(false);
-  const [billForm, setBillForm] = useState({ description: "", vendor_name: "", amount: "", category: "", due_date: "", invoice_file: null as File | null });
+  const [billForm, setBillForm] = useState({ description: "", vendor_name: "", amount: "", category: "", due_date: "", dept_id: "", invoice_file: null as File | null });
   const [showAddDoc, setShowAddDoc] = useState(false);
-  const [docForm, setDocForm] = useState({ title: "", folder: "Other", file: null as File | null });
+  const [docForm, setDocForm] = useState({ title: "", folder: "Other", dept_ids: [] as string[], file: null as File | null });
+  const [deleteEventConfirm, setDeleteEventConfirm] = useState(false);
+  const [deleteTaskConfirm, setDeleteTaskConfirm] = useState<string | null>(null);
 
-  // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
+  // Edit mode in sidesheet
+  const [showEditSheet, setShowEditSheet] = useState(false);
   const [editName, setEditName] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
   const [editBudget, setEditBudget] = useState("");
+
+  // Dept pill tab for tasks
+  const [activeDeptTab, setActiveDeptTab] = useState<string | null>(null);
+
+  // Sidesheet navigation stack
+  const [sheetStack, setSheetStack] = useState<Array<{ type: string; id: string }>>([]);
+
+  // Editable dept budget in dept tab
+  const [editingDeptBudget, setEditingDeptBudget] = useState<string | null>(null);
+  const [editDeptBudgetValue, setEditDeptBudgetValue] = useState("");
 
   const event = getEvent(id!);
 
@@ -92,7 +104,7 @@ export default function EventDetailPage() {
     }
   }, [event?.id]);
 
-  useScrollLock(!!selectedBill || !!deptSheet || showImageUpload);
+  useScrollLock(!!selectedBill || !!deptSheet || showImageUpload || showEditSheet);
 
   if (!event) return <div className="p-8 text-sm text-muted-foreground">Event not found</div>;
 
@@ -101,7 +113,7 @@ export default function EventDetailPage() {
   const evBills = getBillsByEvent(event.id);
   const docs = getDocsByEvent(event.id);
   const activities = getActivitiesByEvent(event.id);
-  const totalSpent = depts.reduce((s, d) => s + d.spent, 0);
+  const totalSpent = evBills.reduce((s, b) => s + b.amount, 0);
   const totalAllocated = depts.reduce((s, d) => s + d.allocated_budget, 0);
   const approvedSpend = evBills.filter(b => b.status === "settled" || b.status === "ca-approved").reduce((s, b) => s + b.amount, 0);
   const pendingBillCount = evBills.filter(b => b.status === "pending" || b.status === "dept-verified").length;
@@ -113,7 +125,6 @@ export default function EventDetailPage() {
     { key: "departments", label: "Departments" },
     { key: "tasks", label: "To-Dos" },
     { key: "billing", label: "Billing" },
-    { key: "budget", label: "Budget" },
     { key: "documents", label: "Documents" },
   ];
 
@@ -157,6 +168,18 @@ export default function EventDetailPage() {
     toast({ title: "Department removed from event" });
   };
 
+  const handleDeleteEvent = async () => {
+    await dbDeleteEvent(event.id);
+    setDeleteEventConfirm(false);
+    toast({ title: "Event deleted" });
+    navigate("/dashboard");
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    await dbDeleteTask(taskId);
+    setDeleteTaskConfirm(null);
+    toast({ title: "Task deleted" });
+  };
 
   const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
   const existingDeptNames = new Set(depts.map(d => d.name));
@@ -166,13 +189,17 @@ export default function EventDetailPage() {
 
   const handleSave = async () => {
     await dbUpdateEvent(event.id, { name: editName, location: editLocation, start_date: editStartDate, end_date: editEndDate, estimated_budget: Number(editBudget) });
-    setIsEditing(false);
+    setShowEditSheet(false);
     toast({ title: "Event updated" });
   };
 
-  const handleCancelEdit = () => {
-    setEditName(event.name); setEditLocation(event.location); setEditStartDate(event.start_date); setEditEndDate(event.end_date); setEditBudget(String(event.estimated_budget));
-    setIsEditing(false);
+  const handleOpenEdit = () => {
+    setEditName(event.name);
+    setEditLocation(event.location);
+    setEditStartDate(event.start_date);
+    setEditEndDate(event.end_date);
+    setEditBudget(String(event.estimated_budget));
+    setShowEditSheet(true);
   };
 
   const handleImageSelect = async (url: string) => {
@@ -186,12 +213,13 @@ export default function EventDetailPage() {
     toast({ title: "Bill approved" });
   };
 
-  const toggleGroup = (groupId: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
-      return next;
-    });
+  const handleSaveDeptBudget = async (deptId: string) => {
+    const val = parseFloat(editDeptBudgetValue);
+    if (!isNaN(val)) {
+      await dbUpdateDepartment(deptId, { allocated_budget: val });
+      toast({ title: "Budget updated" });
+    }
+    setEditingDeptBudget(null);
   };
 
   // Group tasks by department
@@ -199,6 +227,14 @@ export default function EventDetailPage() {
     dept: d,
     tasks: evTasks.filter(t => t.dept_id === d.id),
   }));
+
+  // Filtered tasks by active dept tab
+  const filteredTasksByDept = activeDeptTab
+    ? tasksByDept.filter(({ dept }) => dept.id === activeDeptTab)
+    : tasksByDept;
+
+  // Calculate spend from bills per department
+  const deptSpend = (deptId: string) => evBills.filter(b => b.dept_id === deptId).reduce((s, b) => s + b.amount, 0);
 
   return (
     <div className="p-6 w-full">
@@ -222,37 +258,21 @@ export default function EventDetailPage() {
             </div>
           )}
           <div className="absolute inset-0 rounded-xl bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <ImageSquare size={16} className="text-white" />
+            <PencilIcon size={16} className="text-white" />
           </div>
         </button>
         <div className="flex-1">
-          {isEditing ? (
-            <div className="space-y-2">
-              <input value={editName} onChange={e => setEditName(e.target.value)}
-                className="text-xl font-semibold bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-full max-w-md focus:outline-none" />
-              <div className="flex gap-3 flex-wrap">
-                <div><label className="text-[11px] text-muted-foreground font-medium">Location</label>
-                  <input value={editLocation} onChange={e => setEditLocation(e.target.value)} className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-[200px] focus:outline-none" /></div>
-                <div><label className="text-[11px] text-muted-foreground font-medium">Start Date</label>
-                  <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 focus:outline-none" /></div>
-                <div><label className="text-[11px] text-muted-foreground font-medium">End Date</label>
-                  <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 focus:outline-none" /></div>
-                <div><label className="text-[11px] text-muted-foreground font-medium">Est. Budget (₹)</label>
-                  <input type="number" value={editBudget} onChange={e => setEditBudget(e.target.value)} className="block mt-0.5 text-sm bg-secondary border border-stroke rounded-lg px-3 py-1.5 w-[160px] focus:outline-none" /></div>
-              </div>
-              <div className="flex gap-2 pt-1">
-                <button onClick={handleSave} className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">Save</button>
-                <button onClick={handleCancelEdit} className="rounded-full bg-secondary px-4 py-1.5 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold text-foreground">{event.name}</h1>
-              <StatusBadge status={event.status} />
-              <button onClick={() => setIsEditing(true)} className="ml-2 flex h-6 w-6 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
-                <PencilSimple size={13} />
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">{event.name}</h1>
+            <StatusBadge status={event.status} />
+            <button onClick={handleOpenEdit} className="ml-2 flex h-6 w-6 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
+              <PencilSimple size={13} />
+            </button>
+          </div>
+          {event.location && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+              <MapPin size={11} /> {event.location}
+            </p>
           )}
         </div>
       </div>
@@ -270,14 +290,15 @@ export default function EventDetailPage() {
       {/* ============ OVERVIEW ============ */}
       {tab === "overview" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden">
+          <div className="grid grid-cols-5 gap-0 border border-stroke rounded-xl overflow-hidden">
             {[
               { label: "Estimated Budget", value: formatINRShort(event.estimated_budget) },
               { label: "Approved Spend", value: formatINRShort(approvedSpend) },
+              { label: "Total Spend", value: formatINRShort(totalSpent) },
               { label: "Task Progress", value: `${doneTasks}/${totalTasks}` },
               { label: "Departments", value: String(depts.length) },
             ].map((stat, i) => (
-              <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <div key={i} className={`p-5 ${i < 4 ? "border-r border-stroke" : ""}`}>
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
               </div>
@@ -290,6 +311,14 @@ export default function EventDetailPage() {
               <div className="rounded-xl border border-stroke">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-stroke">
                   <h3 className="text-sm font-semibold">Tasks</h3>
+                  <div className="flex items-center gap-2">
+                    {totalTasks > 0 && (
+                      <div className="flex items-center gap-2 w-24">
+                        <ProgressBar value={doneTasks} max={totalTasks} />
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">{Math.round((doneTasks / totalTasks) * 100)}%</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="divide-y divide-stroke">
                   {evTasks.slice(0, 5).map(t => {
@@ -316,7 +345,8 @@ export default function EventDetailPage() {
               <div>
                 <h3 className="text-sm font-semibold mb-3">Recent Activities</h3>
                 <div className="space-y-3">
-                  {activities.map(a => {
+                  {activities.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No activities yet</p>}
+                  {activities.slice(0, 10).map(a => {
                     const user = getProfile(a.user_id);
                     const icon = activityTypeIcons[a.type || "status"] || "📌";
                     return (
@@ -355,17 +385,22 @@ export default function EventDetailPage() {
                   </div>
                 </div>
                 <div className="border-t border-stroke pt-3 space-y-2">
-                  {depts.slice(0, 4).map(d => {
-                    const pct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
+                  {depts.map(d => {
+                    const actualSpend = deptSpend(d.id);
+                    const pct = d.allocated_budget > 0 ? Math.round((actualSpend / d.allocated_budget) * 100) : 0;
                     return (
-                      <div key={d.id} className="flex items-center justify-between text-sm">
-                        <span>{d.name}</span>
-                        <span className={`tabular-nums font-medium ${pct > 100 ? "text-red-600" : ""}`}>
-                          {formatINRShort(d.spent)}/{formatINRShort(d.allocated_budget)}
-                        </span>
+                      <div key={d.id}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{d.name}</span>
+                          <span className={`tabular-nums font-medium ${pct > 100 ? "text-red-600" : ""}`}>
+                            {formatINRShort(actualSpend)}/{formatINRShort(d.allocated_budget)}
+                          </span>
+                        </div>
+                        <ProgressBar value={Math.min(pct, 100)} max={100} className="mt-1" />
                       </div>
                     );
                   })}
+                  {depts.length === 0 && <p className="text-xs text-muted-foreground">No departments yet</p>}
                 </div>
               </div>
             </div>
@@ -373,12 +408,27 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ TASKS — grouped by dept, matching screenshot layout ============ */}
+      {/* ============ TASKS — dept pill tabs ============ */}
       {tab === "tasks" && (
-        <div className="space-y-6">
-          {tasksByDept.map(({ dept, tasks: dTasks }) => (
+        <div className="space-y-4">
+          {/* Department pill tabs */}
+          {depts.length > 1 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => setActiveDeptTab(null)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!activeDeptTab ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                All
+              </button>
+              {depts.map(d => (
+                <button key={d.id} onClick={() => setActiveDeptTab(activeDeptTab === d.id ? null : d.id)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${activeDeptTab === d.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                  {d.name} ({evTasks.filter(t => t.dept_id === d.id).length})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filteredTasksByDept.map(({ dept, tasks: dTasks }) => (
             <div key={dept.id}>
-              {/* Department group header */}
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold">{dept.name}</h3>
                 <button onClick={() => setShowAddTask(showAddTask === dept.id ? null : dept.id)}
@@ -386,7 +436,6 @@ export default function EventDetailPage() {
                   Add Task
                 </button>
               </div>
-              {/* Table header */}
               <div className="rounded-xl border border-stroke overflow-hidden">
                 <table className="w-full text-sm table-fixed">
                   <thead><tr className="border-b border-stroke">
@@ -395,10 +444,10 @@ export default function EventDetailPage() {
                     <th className="w-[14%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                     <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
                     <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                    <th className="w-[8%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
-                    <th className="w-[12%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
+                    <th className="w-[8%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
+                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
                     <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="w-[3%] px-2 py-2.5" />
+                    <th className="w-[5%] px-2 py-2.5" />
                   </tr></thead>
                   <tbody>
                     {dTasks.map(t => {
@@ -419,13 +468,15 @@ export default function EventDetailPage() {
                           <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
                           <td className="px-4 py-3"><div className="flex items-center gap-1"><Flag size={13} weight="fill" className={pc.color} /><span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span></div></td>
                           <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                          <td className="px-2 py-3 text-center">
-                            <CaretDown size={14} className="text-muted-foreground mx-auto rotate-[-90deg]" />
+                          <td className="px-2 py-3 text-center" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setDeleteTaskConfirm(t.id)}
+                              className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors">
+                              <Trash size={13} />
+                            </button>
                           </td>
                         </tr>
                       );
                     })}
-                    {/* Inline add task row */}
                     {showAddTask === dept.id && (
                       <tr className="border-b border-stroke bg-secondary/30">
                         <td className="px-2 py-2" />
@@ -472,7 +523,7 @@ export default function EventDetailPage() {
         </div>
       )}
 
-      {/* ============ DEPARTMENTS — with assign & budget ============ */}
+      {/* ============ DEPARTMENTS — with assign & budget (editable) ============ */}
       {tab === "departments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -494,6 +545,21 @@ export default function EventDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Budget summary */}
+          <div className="grid grid-cols-3 gap-0 border border-stroke rounded-xl overflow-hidden">
+            {[
+              { label: "Estimated Budget", value: formatINRShort(event.estimated_budget) },
+              { label: "Total Allocated", value: formatINRShort(totalAllocated) },
+              { label: "Total Spend", value: formatINRShort(totalSpent) },
+            ].map((stat, i) => (
+              <div key={i} className={`p-4 ${i < 2 ? "border-r border-stroke" : ""}`}>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <p className="text-lg font-semibold mt-1 tabular-nums">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+
           <div className="rounded-xl border border-stroke overflow-hidden">
             <table className="w-full text-sm">
               <thead><tr className="border-b border-stroke">
@@ -508,7 +574,8 @@ export default function EventDetailPage() {
               <tbody>
                 {depts.map(d => {
                   const head = getProfile(d.head_id);
-                  const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
+                  const actualSpend = deptSpend(d.id);
+                  const utilPct = d.allocated_budget > 0 ? Math.round((actualSpend / d.allocated_budget) * 100) : 0;
                   const memberCount = d.member_ids?.length || 0;
                   return (
                     <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer"
@@ -516,8 +583,21 @@ export default function EventDetailPage() {
                       <td className="px-4 py-3 font-medium">{d.name}</td>
                       <td className="px-4 py-3">{head && <button onClick={e => { e.stopPropagation(); setProfileUserId(head.id); }} className="flex items-center gap-1.5 hover:opacity-80"><UserAvatar name={head.name} color={head.avatar_color} size="sm" /><span>{head.name}</span></button>}</td>
                       <td className="px-4 py-3 text-muted-foreground">{memberCount} member{memberCount !== 1 ? "s" : ""}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.spent)}</td>
+                      <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                        {editingDeptBudget === d.id ? (
+                          <input type="number" autoFocus value={editDeptBudgetValue}
+                            onChange={e => setEditDeptBudgetValue(e.target.value)}
+                            onBlur={() => handleSaveDeptBudget(d.id)}
+                            onKeyDown={e => { if (e.key === "Enter") handleSaveDeptBudget(d.id); if (e.key === "Escape") setEditingDeptBudget(null); }}
+                            className="w-24 text-right bg-secondary border border-stroke rounded px-2 py-0.5 text-sm focus:outline-none tabular-nums" />
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setEditingDeptBudget(d.id); setEditDeptBudgetValue(String(d.allocated_budget)); }}
+                            className="tabular-nums hover:text-accent transition-colors">
+                            {formatINRShort(d.allocated_budget)}
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(actualSpend)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div>
@@ -558,8 +638,12 @@ export default function EventDetailPage() {
           if (!billForm.invoice_file) {
             toast({ title: "Invoice attachment is mandatory", variant: "destructive" }); return;
           }
+          if (!billForm.dept_id) {
+            toast({ title: "Department is required", variant: "destructive" }); return;
+          }
           await dbAddBill({
             event_id: event.id,
+            dept_id: billForm.dept_id,
             vendor_name: billForm.vendor_name.trim(),
             description: billForm.description.trim(),
             amount: parseFloat(billForm.amount) || 0,
@@ -569,7 +653,7 @@ export default function EventDetailPage() {
             invoice_file: billForm.invoice_file.name,
           });
           setShowAddBill(false);
-          setBillForm({ description: "", vendor_name: "", amount: "", category: "", due_date: "", invoice_file: null });
+          setBillForm({ description: "", vendor_name: "", amount: "", category: "", due_date: "", dept_id: "", invoice_file: null });
           toast({ title: "Billing item added" });
         };
 
@@ -586,6 +670,7 @@ export default function EventDetailPage() {
               <thead><tr className="border-b border-stroke">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Item</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Vendor</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
@@ -596,8 +681,9 @@ export default function EventDetailPage() {
                   const dept = getDepartment(b.dept_id);
                   return (
                     <tr key={b.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors cursor-pointer" onClick={() => setSelectedBill(b.id)}>
-                      <td className="px-4 py-3"><p className="font-medium">{b.description}</p><p className="text-xs text-muted-foreground">{dept?.name}</p></td>
+                      <td className="px-4 py-3"><p className="font-medium">{b.description}</p></td>
                       <td className="px-4 py-3">{b.vendor_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{dept?.name || "—"}</td>
                       <td className="px-4 py-3 text-right tabular-nums font-medium">{formatINRShort(b.amount)}</td>
                       <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
                       <td className="px-4 py-3 text-muted-foreground">{b.due_date ? formatDate(b.due_date) : "—"}</td>
@@ -632,6 +718,14 @@ export default function EventDetailPage() {
                     <label className="text-sm font-medium">Vendor <span className="text-destructive">*</span></label>
                     <input value={billForm.vendor_name} onChange={e => setBillForm(f => ({ ...f, vendor_name: e.target.value }))}
                       className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Vendor name" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Department <span className="text-destructive">*</span></label>
+                    <select value={billForm.dept_id} onChange={e => setBillForm(f => ({ ...f, dept_id: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                      <option value="">Select department</option>
+                      {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -668,65 +762,47 @@ export default function EventDetailPage() {
         );
       })()}
 
-      {/* ============ BUDGET ============ */}
-      {tab === "budget" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-0 border border-stroke rounded-xl overflow-hidden">
-            {[
-              { label: "Estimated Budget", value: formatINRShort(event.estimated_budget) },
-              { label: "Total Allocated", value: formatINRShort(totalAllocated) },
-              { label: "Total Spent", value: formatINRShort(totalSpent) },
-            ].map((stat, i) => (
-              <div key={i} className={`p-5 ${i < 2 ? "border-r border-stroke" : ""}`}>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-xl font-semibold mt-1 tabular-nums">{stat.value}</p>
-              </div>
-            ))}
-          </div>
-          <div className="rounded-xl border border-stroke overflow-hidden">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-stroke">
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Allocated</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spent</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Utilisation</th>
-              </tr></thead>
-              <tbody>
-                {depts.map(d => {
-                  const utilPct = d.allocated_budget > 0 ? Math.round((d.spent / d.allocated_budget) * 100) : 0;
-                  return (
-                    <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors">
-                      <td className="px-4 py-3 font-medium">{d.name}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(d.allocated_budget)}</td>
-                      <td className={`px-4 py-3 text-right tabular-nums ${utilPct > 100 ? "text-red-600 font-medium" : ""}`}>{formatINRShort(d.spent)}</td>
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-20"><ProgressBar value={Math.min(utilPct, 100)} max={100} /></div><span className={`text-xs font-medium ${utilPct > 100 ? "text-red-600" : "text-muted-foreground"}`}>{utilPct}%</span></div></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       {/* ============ DOCUMENTS ============ */}
       {tab === "documents" && (() => {
 
         const handleAddDocSubmit = async () => {
           if (!docForm.title.trim()) { toast({ title: "Title required", variant: "destructive" }); return; }
           if (!docForm.file) { toast({ title: "File attachment is mandatory", variant: "destructive" }); return; }
-          await dbAddDocument({
-            event_id: event.id,
-            name: docForm.title.trim(),
-            folder: docForm.folder || "Other",
-            file_url: URL.createObjectURL(docForm.file),
-            file_size: `${(docForm.file.size / 1024 / 1024).toFixed(1)} MB`,
-            uploaded_by: currentUser.id,
-            visibility: "internal",
-          });
+          // If dept_ids selected, create doc per dept; else create one without dept
+          if (docForm.dept_ids.length > 0) {
+            for (const did of docForm.dept_ids) {
+              await dbAddDocument({
+                event_id: event.id,
+                dept_id: did,
+                name: docForm.title.trim(),
+                folder: docForm.folder || "Other",
+                file_url: URL.createObjectURL(docForm.file),
+                file_size: `${(docForm.file.size / 1024 / 1024).toFixed(1)} MB`,
+                uploaded_by: currentUser.id,
+                visibility: "internal",
+              });
+            }
+          } else {
+            await dbAddDocument({
+              event_id: event.id,
+              name: docForm.title.trim(),
+              folder: docForm.folder || "Other",
+              file_url: URL.createObjectURL(docForm.file),
+              file_size: `${(docForm.file.size / 1024 / 1024).toFixed(1)} MB`,
+              uploaded_by: currentUser.id,
+              visibility: "internal",
+            });
+          }
           setShowAddDoc(false);
-          setDocForm({ title: "", folder: "Other", file: null });
+          setDocForm({ title: "", folder: "Other", dept_ids: [], file: null });
           toast({ title: "Document uploaded" });
+        };
+
+        const toggleDocDept = (deptId: string) => {
+          setDocForm(f => ({
+            ...f,
+            dept_ids: f.dept_ids.includes(deptId) ? f.dept_ids.filter(id => id !== deptId) : [...f.dept_ids, deptId]
+          }));
         };
 
         return (
@@ -742,6 +818,7 @@ export default function EventDetailPage() {
               <thead><tr className="border-b border-stroke">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Document</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Folder</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Uploaded By</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Size</th>
@@ -749,10 +826,12 @@ export default function EventDetailPage() {
               <tbody>
                 {docs.map(d => {
                   const uploader = getProfile(d.uploaded_by);
+                  const dept = d.dept_id ? getDepartment(d.dept_id) : null;
                   return (
                     <tr key={d.id} className="border-b border-stroke last:border-0 hover:bg-selected transition-colors">
                       <td className="px-4 py-3 font-medium">{d.name}</td>
                       <td className="px-4 py-3"><span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium">{d.folder}</span></td>
+                      <td className="px-4 py-3 text-muted-foreground">{dept?.name || "All"}</td>
                       <td className="px-4 py-3">{uploader && <span>{uploader.name}</span>}</td>
                       <td className="px-4 py-3 text-muted-foreground">{formatDate(d.uploaded_at)}</td>
                       <td className="px-4 py-3 text-muted-foreground">{d.file_size}</td>
@@ -786,6 +865,19 @@ export default function EventDetailPage() {
                     </select>
                   </div>
                   <div>
+                    <label className="text-sm font-medium">Departments</label>
+                    <p className="text-xs text-muted-foreground mb-1.5">Select which departments can see this document</p>
+                    <div className="flex flex-wrap gap-2">
+                      {depts.map(d => (
+                        <button key={d.id} onClick={() => toggleDocDept(d.id)}
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${docForm.dept_ids.includes(d.id) ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                          {d.name}
+                        </button>
+                      ))}
+                    </div>
+                    {docForm.dept_ids.length === 0 && <p className="text-xs text-muted-foreground mt-1">No department selected — visible to all</p>}
+                  </div>
+                  <div>
                     <label className="text-sm font-medium">File <span className="text-destructive">*</span></label>
                     <input type="file" onChange={e => setDocForm(f => ({ ...f, file: e.target.files?.[0] || null }))}
                       className="mt-1 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-medium file:bg-secondary file:text-foreground hover:file:bg-selected" />
@@ -817,7 +909,7 @@ export default function EventDetailPage() {
               <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Amount</p><p className="font-semibold text-lg">{formatINRShort(bill.amount)}</p></div>
               <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Status</p><StatusBadge status={bill.status} /></div>
               <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Invoice</p><p>{bill.invoice_number}</p></div>
-              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name}</p></div>
+              <div><p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Department</p><p>{getDepartment(bill.dept_id)?.name || "—"}</p></div>
             </div>
             {bill.invoice_file && (
               <div className="flex items-center gap-1.5 text-sm text-accent cursor-pointer hover:underline border-t border-stroke pt-3">
@@ -835,9 +927,9 @@ export default function EventDetailPage() {
         const deptTasks = evTasks.filter(t => t.dept_id === dept.id);
         const deptDocs = docs.filter(d => d.dept_id === dept.id);
         const head = getProfile(dept.head_id);
-        const utilPct = dept.allocated_budget > 0 ? Math.round((dept.spent / dept.allocated_budget) * 100) : 0;
+        const actualSpend = deptSpend(dept.id);
+        const utilPct = dept.allocated_budget > 0 ? Math.round((actualSpend / dept.allocated_budget) * 100) : 0;
         const deptMembers = (dept.member_ids || []).map(id => getProfile(id)).filter(Boolean);
-        const admins = profiles.filter(p => p.role === "sa" || p.role === "org");
         const nonMembers = assignableProfiles.filter(p => !(dept.member_ids || []).includes(p.id) && p.id !== dept.head_id);
 
         const handleAddMember = async (userId: string) => {
@@ -867,11 +959,11 @@ export default function EventDetailPage() {
                 <p className="text-xs text-muted-foreground mb-1">Budget ({utilPct}% used)</p>
                 <ProgressBar value={Math.min(utilPct, 100)} max={100} />
                 <div className="flex justify-between text-sm mt-1">
-                  <span>{formatINRShort(dept.spent)} spent</span>
+                  <span>{formatINRShort(actualSpend)} spent</span>
                   <span>{formatINRShort(dept.allocated_budget)} allocated</span>
                 </div>
               </div>
-              {/* Department Members with add/remove */}
+              {/* Department Members */}
               <div className="border-t border-stroke pt-3">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-semibold">Members ({deptMembers.length})</p>
@@ -902,23 +994,8 @@ export default function EventDetailPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-muted-foreground">No members assigned. Use the dropdown above to add.</p>
+                  <p className="text-xs text-muted-foreground">No members assigned.</p>
                 )}
-              </div>
-              {/* Admins with Access */}
-              <div className="border-t border-stroke pt-3">
-                <p className="text-sm font-semibold mb-2">Admins ({admins.length})</p>
-                <div className="space-y-1.5">
-                  {admins.map(a => (
-                    <button key={a.id} onClick={() => setProfileUserId(a.id)} className="flex items-center gap-2 w-full py-1 px-1 rounded hover:bg-secondary/50">
-                      <UserAvatar name={a.name} color={a.avatar_color} size="sm" />
-                      <div className="text-left">
-                        <span className="text-sm">{a.name}</span>
-                        <span className="text-[11px] text-muted-foreground ml-2">{a.role === "sa" ? "Super Admin" : "Organiser"}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
               </div>
               {/* Tasks */}
               <div className="border-t border-stroke pt-3">
@@ -973,6 +1050,100 @@ export default function EventDetailPage() {
           </>
         );
       })()}
+
+      {/* Edit Event Sidesheet */}
+      {showEditSheet && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowEditSheet(false)} />
+          <div className="fixed right-0 top-0 z-[61] h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Edit Event</h3>
+                <button onClick={() => setShowEditSheet(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
+
+              {/* Thumbnail */}
+              <div>
+                <label className="text-sm font-medium">Event Thumbnail</label>
+                {event.image_url ? (
+                  <div className="relative mt-2 rounded-xl overflow-hidden group">
+                    <img src={event.image_url} alt="" className="w-full h-32 object-cover" />
+                    <button onClick={() => setShowImageUpload(true)}
+                      className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowImageUpload(true)}
+                    className="mt-2 flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-stroke rounded-xl bg-secondary hover:bg-selected transition-colors cursor-pointer">
+                    <p className="text-sm font-medium">Add thumbnail</p>
+                    <p className="text-xs text-muted-foreground">Upload or choose from gallery</p>
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Event Name <span className="text-destructive">*</span></label>
+                <input value={editName} onChange={e => setEditName(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Location</label>
+                <input value={editLocation} onChange={e => setEditLocation(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Start Date</label>
+                  <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">End Date</label>
+                  <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Estimated Budget (₹)</label>
+                <input type="number" value={editBudget} onChange={e => setEditBudget(e.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+              </div>
+
+              <div className="flex justify-between gap-2 pt-4 border-t border-stroke">
+                <button onClick={() => setDeleteEventConfirm(true)}
+                  className="rounded-full bg-destructive/10 text-destructive px-4 py-2 text-sm font-medium hover:bg-destructive/20 transition-colors flex items-center gap-1.5">
+                  <Trash size={14} /> Delete Event
+                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowEditSheet(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                  <button onClick={handleSave} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Save</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete task confirm */}
+      <ConfirmDialog
+        open={!!deleteTaskConfirm}
+        title="Delete Task?"
+        message="This will permanently delete this task and all its subtasks. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => deleteTaskConfirm && handleDeleteTask(deleteTaskConfirm)}
+        onCancel={() => setDeleteTaskConfirm(null)}
+      />
+
+      {/* Delete event confirm */}
+      <ConfirmDialog
+        open={deleteEventConfirm}
+        title="Delete Event?"
+        message="This will permanently delete this event and all associated data (tasks, departments, billing, documents). This cannot be undone."
+        confirmLabel="Delete Event"
+        destructive
+        onConfirm={handleDeleteEvent}
+        onCancel={() => setDeleteEventConfirm(false)}
+      />
 
       <TaskDetailSheet taskId={selectedTask} onClose={() => setSelectedTask(null)} onOpenProfile={setProfileUserId} />
       <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
