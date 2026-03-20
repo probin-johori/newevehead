@@ -463,11 +463,19 @@ export default function BillingPage() {
                     className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground" placeholder="e.g. Equipment" />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Event</label>
-                  <select value={addForm.event_id} onChange={e => setAddForm(p => ({ ...p, event_id: e.target.value }))}
+                  <label className="text-sm font-medium">Event <span className="text-destructive">*</span></label>
+                  <select value={addForm.event_id} onChange={e => setAddForm(p => ({ ...p, event_id: e.target.value, dept_id: "" }))}
                     className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
                     <option value="">Select event</option>
                     {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Department <span className="text-destructive">*</span></label>
+                  <select value={addForm.dept_id} onChange={e => setAddForm(p => ({ ...p, dept_id: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
+                    <option value="">Select department</option>
+                    {departments.filter(d => !addForm.event_id || d.event_id === addForm.event_id).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </div>
                 <div>
