@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MagnifyingGlass, Bell, Check, CaretDown, GearSix, SignOut, User, Plus, CheckCircle } from "@phosphor-icons/react";
 import { useMockData } from "@/context/MockDataContext";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { UserAvatar } from "@/components/UserAvatar";
 
