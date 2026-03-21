@@ -40,8 +40,8 @@ export default function TasksPage() {
     getCommentsByTask, setTasks, profiles, departments
   } = useMockData();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
-  const [eventFilter, setEventFilter] = useState(searchParams.get("event") || "all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const defaultEvent = searchParams.get("event") || events[0]?.id || "";
+  const [eventFilter, setEventFilter] = useState(defaultEvent);
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<string | null>(searchParams.get("task"));
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
