@@ -187,13 +187,18 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* Event Navigation — horizontal scroll tabs */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+        {events.map(ev => (
+          <button key={ev.id} onClick={() => setEventFilter(ev.id)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${eventFilter === ev.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+            {ev.name}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <select value={eventFilter} onChange={e => setEventFilter(e.target.value)}
-          className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
-          <option value="all">All Events</option>
-          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-        </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
           <option value="all">All Status</option>
