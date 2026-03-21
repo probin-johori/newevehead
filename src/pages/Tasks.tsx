@@ -40,7 +40,8 @@ export default function TasksPage() {
     getCommentsByTask, setTasks, profiles, departments
   } = useMockData();
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
-  const [eventFilter, setEventFilter] = useState(searchParams.get("event") || "all");
+  const defaultEvent = searchParams.get("event") || events[0]?.id || "";
+  const [eventFilter, setEventFilter] = useState(defaultEvent);
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [assigneeFilter, setAssigneeFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<string | null>(searchParams.get("task"));
@@ -63,18 +64,17 @@ export default function TasksPage() {
     const ev = searchParams.get("event");
     const st = searchParams.get("status");
     const task = searchParams.get("task");
-    const view = searchParams.get("view");
     if (ev) setEventFilter(ev);
+    else if (!eventFilter && events.length > 0) setEventFilter(events[0].id);
     if (st) setStatusFilter(st);
     if (task) setSelectedTask(task);
-    if (view === "my") setAssigneeFilter(currentUser.id);
   }, [searchParams]);
 
   const visibleTasks = tasks;
 
   const filtered = visibleTasks.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
-    if (eventFilter !== "all" && t.event_id !== eventFilter) return false;
+    if (eventFilter && t.event_id !== eventFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
     if (assigneeFilter !== "all" && t.assignee_id !== assigneeFilter) return false;
     return true;
@@ -188,13 +188,18 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* Event Navigation — horizontal scroll tabs */}
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1 scrollbar-none">
+        {events.map(ev => (
+          <button key={ev.id} onClick={() => setEventFilter(ev.id)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${eventFilter === ev.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+            {ev.name}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <select value={eventFilter} onChange={e => setEventFilter(e.target.value)}
-          className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
-          <option value="all">All Events</option>
-          {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
-        </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
           <option value="all">All Status</option>
@@ -236,27 +241,25 @@ export default function TasksPage() {
 
       {/* LIST VIEW */}
       {viewMode === "list" && (
-        <div className="rounded-xl border border-stroke overflow-hidden">
-          <table className="w-full text-sm table-fixed">
+        <div className="rounded-xl border border-stroke overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="border-b border-stroke">
-                <th className={`${colWidths.checkbox} px-3`}><input type="checkbox" className="h-3.5 w-3.5 rounded accent-accent" onChange={e => {
+                <th className="w-10 px-3"><input type="checkbox" className="h-3.5 w-3.5 rounded accent-accent" onChange={e => {
                   if (e.target.checked) setSelectedTasks(new Set(sortedFiltered.map(t => t.id)));
                   else setSelectedTasks(new Set());
                 }} /></th>
-                <th className={`${colWidths.task} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Task</th>
-                <th className={`${colWidths.event} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Event</th>
-                <th className={`${colWidths.assignee} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Assignee</th>
-                <th className={`${colWidths.priority} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Priority</th>
-                <th className={`${colWidths.status} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Status</th>
-                <th className={`${colWidths.subtasks} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Subtasks</th>
-                <th className={`${colWidths.due} px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`}>Due</th>
-                <th className={colWidths.action}></th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
+                <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
+                <th className="w-8"></th>
               </tr>
             </thead>
             <tbody>
               {sortedFiltered.map(t => {
-                const ev = getEvent(t.event_id);
                 const assignee = getProfile(t.assignee_id);
                 const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
                 const commentCount = getCommentsByTask(t.id).length;
@@ -265,42 +268,36 @@ export default function TasksPage() {
                 return (
                   <tr key={t.id} onClick={() => setSelectedTask(t.id)}
                     className={`border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors ${selectedTasks.has(t.id) ? "bg-selected/50" : ""}`}>
-                    <td className={`${colWidths.checkbox} px-3`} onClick={e => e.stopPropagation()}>
+                    <td className="w-10 px-3" onClick={e => e.stopPropagation()}>
                       <input type="checkbox" checked={selectedTasks.has(t.id)} onChange={() => toggleSelectTask(t.id)} className="h-3.5 w-3.5 rounded accent-accent" />
                     </td>
-                    <td className={`${colWidths.task} px-4 py-3`}>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium truncate">{t.title}</span>
                         {commentCount > 0 && <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground shrink-0"><ChatCircle size={12} />{commentCount}</span>}
                       </div>
                     </td>
-                    <td className={`${colWidths.event} px-4 py-3`}>
-                      <button className="text-muted-foreground hover:text-accent transition-colors text-sm truncate"
-                        onClick={e => { e.stopPropagation(); navigate(`/events/${t.event_id}`); }}>
-                        {ev?.name}
-                      </button>
-                    </td>
-                    <td className={`${colWidths.assignee} px-4 py-3`}>
+                    <td className="px-4 py-3">
                       {assignee && (
                         <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="flex items-center gap-1.5 hover:opacity-80 min-w-0">
                           <UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span className="truncate">{assignee.name}</span>
                         </button>
                       )}
                     </td>
-                    <td className={`${colWidths.priority} px-4 py-3`}>
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <Flag size={13} weight="fill" className={pc.color} />
                         <span className={`text-xs font-medium ${pc.color}`}>{pc.label}</span>
                       </div>
                     </td>
-                    <td className={`${colWidths.status} px-4 py-3`}><StatusBadge status={t.status} /></td>
-                    <td className={`${colWidths.subtasks} px-4 py-3`}>
+                    <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
+                    <td className="px-4 py-3">
                       {t.subtasks.length > 0 ? (
                         <span className="flex items-center gap-1 text-xs text-muted-foreground"><ListChecks size={13} />{doneSubtasks}/{t.subtasks.length}</span>
                       ) : <span className="text-xs text-muted-foreground">—</span>}
                     </td>
-                    <td className={`${colWidths.due} px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                    <td className={`${colWidths.action} px-4 py-3`}><CaretRight size={14} className="text-muted-foreground" /></td>
+                    <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
+                    <td className="px-4 py-3"><CaretRight size={14} className="text-muted-foreground" /></td>
                   </tr>
                 );
               })}

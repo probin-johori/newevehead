@@ -411,16 +411,16 @@ export default function EventDetailPage() {
       {/* ============ TASKS — dept pill tabs ============ */}
       {tab === "tasks" && (
         <div className="space-y-4">
-          {/* Department pill tabs */}
+          {/* Department pill tabs — horizontal scroll */}
           {depts.length > 1 && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button onClick={() => setActiveDeptTab(null)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!activeDeptTab ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${!activeDeptTab ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
                 All
               </button>
               {depts.map(d => (
                 <button key={d.id} onClick={() => setActiveDeptTab(activeDeptTab === d.id ? null : d.id)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${activeDeptTab === d.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${activeDeptTab === d.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
                   {d.name} ({evTasks.filter(t => t.dept_id === d.id).length})
                 </button>
               ))}
@@ -436,18 +436,18 @@ export default function EventDetailPage() {
                   Add Task
                 </button>
               </div>
-              <div className="rounded-xl border border-stroke overflow-hidden">
-                <table className="w-full text-sm table-fixed">
+              <div className="rounded-xl border border-stroke overflow-x-auto">
+                <table className="w-full text-sm min-w-[700px]">
                   <thead><tr className="border-b border-stroke">
-                    <th className="w-[5%] px-2 py-2.5" />
-                    <th className="w-[28%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
-                    <th className="w-[14%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>
-                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
-                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                    <th className="w-[8%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
-                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
-                    <th className="w-[10%] px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="w-[5%] px-2 py-2.5" />
+                    <th className="w-10 px-2 py-2.5" />
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
+                    {!activeDeptTab && <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department</th>}
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Subtasks</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Priority</th>
+                    <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="w-10 px-2 py-2.5" />
                   </tr></thead>
                   <tbody>
                     {dTasks.map(t => {
@@ -462,7 +462,7 @@ export default function EventDetailPage() {
                             <CaretDown size={14} className="text-muted-foreground mx-auto" />
                           </td>
                           <td className="px-4 py-3 font-medium truncate">{t.title}</td>
-                          <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>
+                          {!activeDeptTab && <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>}
                           <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
                           <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
                           <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
