@@ -63,11 +63,10 @@ export default function TasksPage() {
     const ev = searchParams.get("event");
     const st = searchParams.get("status");
     const task = searchParams.get("task");
-    const view = searchParams.get("view");
     if (ev) setEventFilter(ev);
+    else if (!eventFilter && events.length > 0) setEventFilter(events[0].id);
     if (st) setStatusFilter(st);
     if (task) setSelectedTask(task);
-    if (view === "my") setAssigneeFilter(currentUser.id);
   }, [searchParams]);
 
   const visibleTasks = tasks;
