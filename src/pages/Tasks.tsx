@@ -73,7 +73,7 @@ export default function TasksPage() {
 
   const filtered = visibleTasks.filter(t => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
-    if (eventFilter !== "all" && t.event_id !== eventFilter) return false;
+    if (eventFilter && t.event_id !== eventFilter) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
     if (assigneeFilter !== "all" && t.assignee_id !== assigneeFilter) return false;
     return true;
