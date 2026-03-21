@@ -1,20 +1,20 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMockData, formatINRShort, formatDate } from "@/context/MockDataContext";
-import type { Event } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
-import { UserAvatar } from "@/components/UserAvatar";
-import { X, Hash, Plus } from "@phosphor-icons/react";
+import { X, Plus, CaretDown } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { EventImageUpload } from "@/components/EventImageUpload";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent, setEvents, currentUser, addEvent: dbAddEvent, orgId } = useMockData();
+  const { events, departments, tasks, bills, getTasksByEvent, currentUser, addEvent: dbAddEvent, orgId } = useMockData();
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
+  const [showDeptDropdown, setShowDeptDropdown] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showPastEvents, setShowPastEvents] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
 
   useScrollLock(showAddEvent);
@@ -26,10 +26,17 @@ export default function DashboardPage() {
   const filteredEvents = deptFilter ? events.filter(e => filteredEventIds.has(e.id)) : events;
   const filteredTasks = deptFilter ? tasks.filter(t => filteredDeptIds.has(t.dept_id)) : tasks;
 
+  // Split events into upcoming/current vs past
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const upcomingEvents = filteredEvents.filter(e => new Date(e.end_date) >= now || e.status === "planning" || e.status === "active");
+  const pastEvents = filteredEvents.filter(e => new Date(e.end_date) < now && e.status !== "planning" && e.status !== "active");
+  const displayEvents = showPastEvents ? filteredEvents : upcomingEvents;
+
   const totalBudget = filteredEvents.reduce((s, e) => s + e.estimated_budget, 0);
   const totalSpent = filteredDepts.reduce((s, d) => s + d.spent, 0);
   const tasksDone = filteredTasks.filter(t => t.status === "completed").length;
-  const overdueTasks = filteredTasks.filter(t => t.status !== "completed" && new Date(t.deadline) < new Date()).length;
+  const overdueTasks = filteredTasks.filter(t => t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date()).length;
 
   const handleAddEvent = async () => {
     if (!addForm.name.trim()) { toast({ title: "Event name is required", variant: "destructive" }); return; }
@@ -62,21 +69,34 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Department Filter Chips */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">Department:</span>
-        <button onClick={() => setDeptFilter(null)}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${!deptFilter ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
-          All
-        </button>
-        {allDeptNames.map(name => (
-          <button key={name} onClick={() => deptFilter === name ? setDeptFilter(null) : navigate(`/departments/${encodeURIComponent(name)}`)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1 ${deptFilter === name ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
-            <Hash size={10} />{name}
+      {/* Department Filter — dropdown instead of chips */}
+      <div className="flex items-center gap-2 mb-5">
+        <div className="relative">
+          <button onClick={() => setShowDeptDropdown(!showDeptDropdown)}
+            className="flex items-center gap-1.5 rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-selected transition-colors">
+            {deptFilter ? deptFilter : "All Departments"}
+            <CaretDown size={12} />
           </button>
-        ))}
+          {showDeptDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowDeptDropdown(false)} />
+              <div className="absolute left-0 top-full mt-1 w-48 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                <button onClick={() => { setDeptFilter(null); setShowDeptDropdown(false); }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${!deptFilter ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                  All Departments
+                </button>
+                {allDeptNames.map(name => (
+                  <button key={name} onClick={() => { setDeptFilter(name); setShowDeptDropdown(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${deptFilter === name ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         {deptFilter && (
-          <button onClick={() => setDeptFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-1">
+          <button onClick={() => setDeptFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <X size={12} /> Clear
           </button>
         )}
@@ -97,9 +117,18 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Events — card grid with thumbnails */}
-      <h3 className="text-sm font-semibold mb-3">Events{deptFilter ? ` — ${deptFilter}` : ""}</h3>
-      {filteredEvents.length === 0 ? (
+      {/* Events Header with "All Events" toggle */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Events{deptFilter ? ` — ${deptFilter}` : ""}</h3>
+        {pastEvents.length > 0 && (
+          <button onClick={() => setShowPastEvents(!showPastEvents)}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {showPastEvents ? "Show Upcoming" : `All Events (${filteredEvents.length})`}
+          </button>
+        )}
+      </div>
+
+      {displayEvents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-stroke">
           <span className="text-3xl mb-3">🎉</span>
           <p className="text-sm font-medium mb-1">No events yet</p>
@@ -109,32 +138,27 @@ export default function DashboardPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {filteredEvents.map(ev => {
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+          {displayEvents.map(ev => {
             const evTasks = getTasksByEvent(ev.id);
             const done = evTasks.filter(t => t.status === "completed").length;
             const initials = ev.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
             return (
               <button key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}
-                className="rounded-xl border border-stroke overflow-hidden text-left hover:shadow-md transition-shadow bg-card">
-                {ev.image_url ? (
-                  <img src={ev.image_url} alt={ev.name} className="w-full h-32 object-cover" />
-                ) : (
-                  <div className="w-full h-32 bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl font-bold">
-                    {initials}
-                  </div>
-                )}
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium text-sm truncate flex-1">{ev.name}</p>
-                    <StatusBadge status={ev.status} />
-                  </div>
-                  <p className="text-xs text-muted-foreground">{formatDate(ev.start_date)} – {formatDate(ev.end_date)}</p>
-                  <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                    <span>{formatINRShort(ev.estimated_budget)}</span>
-                    <span>{done}/{evTasks.length} tasks</span>
-                  </div>
+                className="flex flex-col items-center text-center group">
+                {/* Round thumbnail */}
+                <div className="w-20 h-20 rounded-full overflow-hidden mb-3 ring-2 ring-stroke group-hover:ring-foreground/30 transition-all">
+                  {ev.image_url ? (
+                    <img src={ev.image_url} alt={ev.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-lg font-bold">
+                      {initials}
+                    </div>
+                  )}
                 </div>
+                <p className="font-medium text-sm truncate max-w-full">{ev.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(ev.start_date)} – {formatDate(ev.end_date)}</p>
+                <StatusBadge status={ev.status} className="mt-1" />
               </button>
             );
           })}
@@ -157,10 +181,10 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {filteredTasks.slice(0, 5).map(t => {
-                  const ev = getEvent(t.event_id);
-                  const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
+                  const ev = events.find(e => e.id === t.event_id);
+                  const overdue = t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date();
                   return (
-                    <tr key={t.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors" onClick={() => navigate(`/tasks?task=${t.id}`)}>
+                    <tr key={t.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors" onClick={() => navigate(`/tasks?event=${t.event_id}&task=${t.id}`)}>
                       <td className="px-4 py-3 font-medium">{t.title}</td>
                       <td className="px-4 py-3 text-muted-foreground">{ev?.name}</td>
                       <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
@@ -186,20 +210,20 @@ export default function DashboardPage() {
                 <button onClick={() => setShowAddEvent(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
 
-              {/* Thumbnail */}
+              {/* Square Thumbnail with rounded corners */}
               <div>
                 <label className="text-sm font-medium">Event Thumbnail</label>
                 {addForm.image_url ? (
-                  <div className="relative mt-2 rounded-xl overflow-hidden group">
-                    <img src={addForm.image_url} alt="" className="w-full h-32 object-cover" />
+                  <div className="relative mt-2 w-32 h-32 rounded-xl overflow-hidden group">
+                    <img src={addForm.image_url} alt="" className="w-full h-full object-cover" />
                     <button onClick={() => setShowImageUpload(true)}
                       className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</button>
                   </div>
                 ) : (
                   <button onClick={() => setShowImageUpload(true)}
-                    className="mt-2 flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-stroke rounded-xl bg-secondary hover:bg-selected transition-colors cursor-pointer">
-                    <p className="text-sm font-medium">Add thumbnail</p>
-                    <p className="text-xs text-muted-foreground">Upload or choose from gallery</p>
+                    className="mt-2 flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-stroke rounded-xl bg-secondary hover:bg-selected transition-colors cursor-pointer">
+                    <p className="text-sm font-medium">Add</p>
+                    <p className="text-xs text-muted-foreground">thumbnail</p>
                   </button>
                 )}
               </div>

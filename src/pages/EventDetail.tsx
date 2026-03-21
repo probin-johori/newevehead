@@ -462,7 +462,7 @@ export default function EventDetailPage() {
                             <CaretDown size={14} className="text-muted-foreground mx-auto" />
                           </td>
                           <td className="px-4 py-3 font-medium truncate">{t.title}</td>
-                          <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>
+                          {!activeDeptTab && <td className="px-4 py-3 text-muted-foreground truncate">{dept.name}</td>}
                           <td className="px-4 py-3">{assignee && <button onClick={e => { e.stopPropagation(); setProfileUserId(assignee.id); }} className="hover:opacity-80"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /></button>}</td>
                           <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
                           <td className="px-4 py-3 text-muted-foreground">{doneCount}/{t.subtasks.length}</td>
