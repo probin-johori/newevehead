@@ -326,13 +326,60 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
               );
             })}
           </div>
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-3 mt-4 relative">
             <UserAvatar name={currentUser.name} color={currentUser.avatar_color} size="sm" />
-            <div className="flex-1 flex gap-2">
-              <input value={newComment} onChange={e => setNewComment(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSubmitComment()}
-                placeholder="Write a comment..."
-                className="flex-1 rounded-full border border-stroke bg-secondary px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none" />
+            <div className="flex-1 flex gap-2 relative">
+              <div className="flex-1 relative">
+                <input ref={commentInputRef} value={newComment}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setNewComment(val);
+                    // Check for @mention
+                    const lastAt = val.lastIndexOf("@");
+                    if (lastAt >= 0 && (lastAt === 0 || val[lastAt - 1] === " ")) {
+                      const query = val.slice(lastAt + 1);
+                      if (!query.includes(" ")) {
+                        setMentionQuery(query.toLowerCase());
+                        setShowMentions(true);
+                      } else {
+                        setShowMentions(false);
+                      }
+                    } else {
+                      setShowMentions(false);
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !showMentions) handleSubmitComment();
+                    if (e.key === "Escape") setShowMentions(false);
+                  }}
+                  placeholder="Write a comment... use @ to mention"
+                  className="w-full rounded-full border border-stroke bg-secondary px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none" />
+                {/* @mention dropdown */}
+                {showMentions && (() => {
+                  const filtered = profiles.filter(p => p.name.toLowerCase().includes(mentionQuery) || p.email.toLowerCase().includes(mentionQuery));
+                  if (filtered.length === 0) return null;
+                  return (
+                    <div className="absolute bottom-full left-0 mb-1 w-64 max-h-48 overflow-y-auto rounded-xl border border-stroke bg-card shadow-lg z-20 py-1">
+                      {filtered.slice(0, 8).map(p => (
+                        <button key={p.id} onClick={() => {
+                          const lastAt = newComment.lastIndexOf("@");
+                          const before = newComment.slice(0, lastAt);
+                          setNewComment(`${before}@${p.name} `);
+                          setShowMentions(false);
+                          commentInputRef.current?.focus();
+                        }}
+                          className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-selected transition-colors text-left">
+                          <UserAvatar name={p.name} color={p.avatar_color} size="sm" />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{p.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{p.email}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
               <button onClick={handleSubmitComment} disabled={!newComment.trim()}
                 className="rounded-full bg-foreground px-3 py-2 text-background hover:bg-foreground/90 disabled:opacity-40 transition-colors">
                 <PaperPlaneRight size={15} />
