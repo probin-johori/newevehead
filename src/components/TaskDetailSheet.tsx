@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMockData, formatDate, formatTimeAgo } from "@/context/MockDataContext";
 import type { Task, TaskStatus, TaskPriority, SubTask } from "@/context/MockDataContext";
@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import {
   X, PaperPlaneRight, PencilSimple, Trash, Flag, Plus, Check,
-  CheckSquare, Square, CaretDown
+  CheckSquare, Square, CaretDown, At
 } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 
