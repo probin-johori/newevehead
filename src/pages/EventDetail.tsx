@@ -411,16 +411,16 @@ export default function EventDetailPage() {
       {/* ============ TASKS — dept pill tabs ============ */}
       {tab === "tasks" && (
         <div className="space-y-4">
-          {/* Department pill tabs */}
+          {/* Department pill tabs — horizontal scroll */}
           {depts.length > 1 && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button onClick={() => setActiveDeptTab(null)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!activeDeptTab ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${!activeDeptTab ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
                 All
               </button>
               {depts.map(d => (
                 <button key={d.id} onClick={() => setActiveDeptTab(activeDeptTab === d.id ? null : d.id)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${activeDeptTab === d.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${activeDeptTab === d.id ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
                   {d.name} ({evTasks.filter(t => t.dept_id === d.id).length})
                 </button>
               ))}
