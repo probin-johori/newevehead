@@ -63,6 +63,10 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
   const [editingDesc, setEditingDesc] = useState(false);
   const [editDescValue, setEditDescValue] = useState("");
   const [confirmDeleteTask, setConfirmDeleteTask] = useState(false);
+  // @mention state
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+  const commentInputRef = useRef<HTMLInputElement>(null);
 
   useScrollLock(!!taskId);
 
