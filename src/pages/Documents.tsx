@@ -103,7 +103,6 @@ export default function DocumentsPage() {
     }
     setCustomFolders(customFolders.map(f => f === oldName ? editFolderValue.trim() : f));
     setDocuments(documents.map(d => d.folder === oldName ? { ...d, folder: editFolderValue.trim() as any } : d));
-    if (folderFilter === oldName) setFolderFilter(editFolderValue.trim());
     setEditingFolderName(null);
     toast({ title: "Folder renamed" });
   };
