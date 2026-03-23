@@ -76,6 +76,30 @@ export default function TeamsPage() {
     setInviteForm({ name: "", email: "", department: "", role: "Member" });
   };
 
+  const generateInviteLink = async () => {
+    if (!orgId) return;
+    const roleMap: Record<string, string> = { Admin: "admin", Manager: "manager", Member: "member", Guest: "member" };
+    const { data, error } = await supabase.from("join_tokens" as any).insert({
+      org_id: orgId,
+      created_by: currentUser.id,
+      role: roleMap[inviteForm.role] || "member",
+    } as any).select().single();
+    if (error) {
+      toast({ title: "Failed to generate link", variant: "destructive" });
+      return;
+    }
+    const row = data as any;
+    const link = `${window.location.origin}/join/${row.token}`;
+    setInviteLink(link);
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setLinkCopied(true);
+    toast({ title: "Link copied to clipboard" });
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
   return (
     <div className="p-6 w-full">
       <div className="flex items-center justify-between mb-5">
