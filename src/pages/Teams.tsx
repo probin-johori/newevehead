@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { useScrollLock } from "@/hooks/useScrollLock";
-import { UserPlus, X, Envelope } from "@phosphor-icons/react";
+import { UserPlus, X, Envelope, Link as LinkIcon, Copy, Check } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
