@@ -15,7 +15,7 @@ const roleLabels: Record<string, string> = {
 const appRoles = ["Admin", "Manager", "Member", "Guest"];
 
 export default function TeamsPage() {
-  const { profiles, currentUser, departments, teamProfiles, refreshTeamMembers } = useMockData();
+  const { profiles, currentUser, departments, teamProfiles, refreshTeamMembers, orgId } = useMockData();
   const [searchParams] = useSearchParams();
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [showInvite, setShowInvite] = useState(false);
@@ -23,6 +23,9 @@ export default function TeamsPage() {
   const [deptFilter, setDeptFilter] = useState<string | null>(null);
   const [inviteForm, setInviteForm] = useState({ name: "", email: "", department: "", role: "Member" });
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [inviteTab, setInviteTab] = useState<"email" | "link">("email");
 
   useScrollLock(showInvite);
 
