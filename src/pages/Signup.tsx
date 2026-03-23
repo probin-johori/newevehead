@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
 import { Eye, EyeSlash } from "@phosphor-icons/react";

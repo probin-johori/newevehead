@@ -29,7 +29,7 @@ export default function LoginPage() {
     const { error: err } = await signIn(email, password);
     setLoading(false);
     if (err) setError(err);
-    else navigate("/dashboard");
+    else navigate(redirectTo || "/dashboard");
   };
 
   const handleResetPassword = async () => {
