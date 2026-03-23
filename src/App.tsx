@@ -21,6 +21,7 @@ import DepartmentsPage from "@/pages/Departments";
 import DeptEventDetailPage from "@/pages/DeptEventDetail";
 import NotificationsPage from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
+import JoinOrgPage from "@/pages/JoinOrg";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="departments/:deptName/events/:eventId" element={<DeptEventDetailPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
       </Route>
+      <Route path="/join/:token" element={<JoinOrgPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

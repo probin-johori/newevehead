@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
 import { Eye, EyeSlash } from "@phosphor-icons/react";
@@ -18,6 +18,8 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ export default function LoginPage() {
     const { error: err } = await signIn(email, password);
     setLoading(false);
     if (err) setError(err);
-    else navigate("/dashboard");
+    else navigate(redirectTo || "/dashboard");
   };
 
   const handleResetPassword = async () => {

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMockData, formatDate, formatTimeAgo } from "@/context/MockDataContext";
 import type { Document as DocType } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -19,8 +20,9 @@ export default function DocumentsPage() {
     currentUser, departments, profiles, taskComments, setTaskComments,
     addDocument, deleteDocument,
   } = useMockData();
+  const [searchParams] = useSearchParams();
 
-  const [folderFilter, setFolderFilter] = useState("all");
+  const folderFilter = searchParams.get("folder") || "all";
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
@@ -91,7 +93,6 @@ export default function DocumentsPage() {
     }
     setCustomFolders(customFolders.filter(f => f !== name));
     setConfirmDeleteFolder(null);
-    if (folderFilter === name) setFolderFilter("all");
     toast({ title: "Folder deleted" });
   };
 
@@ -102,7 +103,6 @@ export default function DocumentsPage() {
     }
     setCustomFolders(customFolders.map(f => f === oldName ? editFolderValue.trim() : f));
     setDocuments(documents.map(d => d.folder === oldName ? { ...d, folder: editFolderValue.trim() as any } : d));
-    if (folderFilter === oldName) setFolderFilter(editFolderValue.trim());
     setEditingFolderName(null);
     toast({ title: "Folder renamed" });
   };
@@ -187,75 +187,15 @@ export default function DocumentsPage() {
         </button>
       </div>
 
-      <div className="flex gap-6">
-        {/* Left: Folder sidebar */}
-        <div className="w-48 shrink-0 hidden md:block">
-          <div className="space-y-0.5">
-            <button onClick={() => setFolderFilter("all")}
-              className={`flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm transition-colors ${folderFilter === "all" ? "bg-selected text-foreground font-medium" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
-              <span>All Documents</span>
-              <span className="text-xs text-muted-foreground">{documents.length}</span>
-            </button>
-            {allFolders.map(f => {
-              const count = documents.filter(d => d.folder === f).length;
-              const isCustom = customFolders.includes(f);
-              return (
-                <div key={f} className="group relative">
-                  {editingFolderName === f ? (
-                    <div className="flex gap-1 px-1">
-                      <input value={editFolderValue} onChange={e => setEditFolderValue(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter") handleRenameFolder(f); if (e.key === "Escape") setEditingFolderName(null); }}
-                        autoFocus className="flex-1 rounded border border-stroke bg-secondary px-2 py-1 text-sm focus:outline-none" />
-                    </div>
-                  ) : (
-                    <button onClick={() => setFolderFilter(f)}
-                      className={`flex items-center justify-between w-full rounded-lg px-3 py-2 text-sm transition-colors ${folderFilter === f ? "bg-selected text-foreground font-medium" : "text-muted-foreground hover:bg-selected hover:text-foreground"}`}>
-                      <span className="truncate">{f}</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-xs">{count}</span>
-                        {isCustom && (
-                          <span className="opacity-0 group-hover:opacity-100 flex gap-0.5">
-                            <button onClick={e => { e.stopPropagation(); setEditingFolderName(f); setEditFolderValue(f); }}
-                              className="text-muted-foreground hover:text-foreground" title="Rename"><PencilSimple size={11} /></button>
-                            <button onClick={e => { e.stopPropagation(); setConfirmDeleteFolder(f); }}
-                              className="text-muted-foreground hover:text-red-600" title="Delete"><Trash size={11} /></button>
-                          </span>
-                        )}
-                      </span>
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+      {/* Document table */}
+      <div className="flex-1 min-w-0">
+        {folderFilter !== "all" && (
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+              📁 {folderFilter}
+            </span>
           </div>
-          <div className="mt-3">
-            {showNewFolder ? (
-              <div className="flex gap-1 px-1">
-                <input value={newFolderName} onChange={e => setNewFolderName(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleAddFolder(); if (e.key === "Escape") setShowNewFolder(false); }}
-                  autoFocus placeholder="Folder name" className="flex-1 rounded border border-stroke bg-secondary px-2 py-1 text-sm focus:outline-none" />
-                <button onClick={handleAddFolder} className="text-foreground"><Plus size={14} /></button>
-              </div>
-            ) : (
-              <button onClick={() => setShowNewFolder(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full">
-                <FolderPlus size={14} /> New Folder
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Document table */}
-        <div className="flex-1 min-w-0">
-          {/* Mobile folder filter */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap md:hidden">
-            {["all", ...allFolders].map(f => (
-              <button key={f} onClick={() => setFolderFilter(f)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${folderFilter === f ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
-                {f === "all" ? "All" : f}
-              </button>
-            ))}
-          </div>
+        )}
 
           <div className="rounded-xl border border-stroke overflow-hidden">
             <table className="w-full text-sm">
@@ -301,7 +241,6 @@ export default function DocumentsPage() {
                 </button>
               </div>
             )}
-          </div>
         </div>
       </div>
 
