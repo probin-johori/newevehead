@@ -21,6 +21,7 @@ import DepartmentsPage from "@/pages/Departments";
 import DeptEventDetailPage from "@/pages/DeptEventDetail";
 import NotificationsPage from "@/pages/Notifications";
 import NotFound from "@/pages/NotFound";
+import JoinOrgPage from "@/pages/JoinOrg";
 
 const queryClient = new QueryClient();
 

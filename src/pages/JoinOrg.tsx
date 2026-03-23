@@ -23,7 +23,7 @@ export default function JoinOrgPage() {
     if (!token) return;
     (async () => {
       const { data, error } = await supabase
-        .from("join_tokens")
+        .from("join_tokens" as any)
         .select("*")
         .eq("token", token)
         .single();
@@ -34,20 +34,22 @@ export default function JoinOrgPage() {
         return;
       }
 
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      const row = data as any;
+
+      if (row.expires_at && new Date(row.expires_at) < new Date()) {
         setExpired(true);
         setLoadingToken(false);
         return;
       }
 
-      setOrgId(data.org_id);
-      setRole(data.role || "member");
+      setOrgId(row.org_id);
+      setRole(row.role || "member");
 
       // Fetch org name
       const { data: org } = await supabase
         .from("organisations")
         .select("name")
-        .eq("id", data.org_id)
+        .eq("id", row.org_id)
         .single();
 
       if (org) setOrgName(org.name);
