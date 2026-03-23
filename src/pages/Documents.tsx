@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMockData, formatDate, formatTimeAgo } from "@/context/MockDataContext";
-import type { Document as DocType } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
