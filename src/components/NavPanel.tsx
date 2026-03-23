@@ -261,27 +261,33 @@ export function NavPanel() {
                   </NavLink>
                 </div>
               </div>
-              {displayFolders.length > 0 && (
-                <div>
-                  <button onClick={() => toggleSection("folders")} className={`flex items-center gap-1 w-full ${sectionLabelClass}`} style={sectionLabelColor}>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <button onClick={() => toggleSection("folders")} className={`flex items-center gap-1 ${sectionLabelClass}`} style={sectionLabelColor}>
                     {expandedSections.has("folders") ? <CaretDown size={10} /> : <CaretRight size={10} />} FOLDERS
                   </button>
-                  {expandedSections.has("folders") && (
-                    <div className="space-y-0.5 pl-1">
-                      {displayFolders.map(f => {
-                        const count = documents.filter(d => d.folder === f).length;
-                        return (
-                          <NavLink key={f} to={`/documents?folder=${encodeURIComponent(f)}`}
-                            className={`${navItemInactive} justify-between`}>
-                            <span className="truncate">{f}</span>
-                            <span className="text-xs text-muted-foreground">{count}</span>
-                          </NavLink>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <button onClick={() => {
+                    const name = prompt("New folder name:");
+                    if (name?.trim()) {
+                      navigate(`/documents?folder=${encodeURIComponent(name.trim())}&newFolder=true`);
+                    }
+                  }} className={iconBtnClass} title="Add folder"><Plus size={10} /></button>
                 </div>
-              )}
+                {expandedSections.has("folders") && (
+                  <div className="space-y-0.5 pl-1">
+                    {displayFolders.map(f => {
+                      const count = documents.filter(d => d.folder === f).length;
+                      return (
+                        <NavLink key={f} to={`/documents?folder=${encodeURIComponent(f)}`}
+                          className={({ isActive }) => `${isActive ? navItemActive : navItemInactive} justify-between`}>
+                          <span className="truncate">{f}</span>
+                          <span className="text-xs text-muted-foreground">{count}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </>
           )}
 
