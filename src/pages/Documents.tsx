@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMockData, formatDate, formatTimeAgo } from "@/context/MockDataContext";
-import { UserAvatar } from "@/components/UserAvatar";
+import type { Document as DocType } from "@/context/MockDataContext";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { useScrollLock } from "@/hooks/useScrollLock";
