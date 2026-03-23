@@ -20,8 +20,9 @@ export default function DocumentsPage() {
     currentUser, departments, profiles, taskComments, setTaskComments,
     addDocument, deleteDocument,
   } = useMockData();
+  const [searchParams] = useSearchParams();
 
-  const [folderFilter, setFolderFilter] = useState("all");
+  const folderFilter = searchParams.get("folder") || "all";
   const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
