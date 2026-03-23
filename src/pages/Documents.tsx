@@ -93,7 +93,6 @@ export default function DocumentsPage() {
     }
     setCustomFolders(customFolders.filter(f => f !== name));
     setConfirmDeleteFolder(null);
-    if (folderFilter === name) setFolderFilter("all");
     toast({ title: "Folder deleted" });
   };
 
