@@ -205,31 +205,76 @@ export default function TeamsPage() {
                 <h3 className="text-lg font-semibold">Invite Team Member</h3>
                 <button onClick={() => setShowInvite(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
-              <div><label className="text-sm font-medium">Name <span className="text-red-500">*</span></label>
-                <input value={inviteForm.name} onChange={e => setInviteForm(f => ({ ...f, name: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Full name" /></div>
-              <div><label className="text-sm font-medium">Email <span className="text-red-500">*</span></label>
-                <input type="email" value={inviteForm.email} onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="email@example.com" /></div>
-              <div><label className="text-sm font-medium">Department</label>
-                <select value={inviteForm.department} onChange={e => setInviteForm(f => ({ ...f, department: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
-                  <option value="">Select department</option>
-                  {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
-                </select></div>
-              <div><label className="text-sm font-medium">Role <span className="text-red-500">*</span></label>
-                <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
-                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
-                  {appRoles.map(r => <option key={r} value={r}>{r}</option>)}
-                </select></div>
-              <p className="text-xs text-muted-foreground mt-1">If you don't see the email, please check your spam or junk folder.</p>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowInvite(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
-                <button onClick={handleInvite} disabled={inviteLoading}
-                  className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50">
-                  <Envelope size={14} /> {inviteLoading ? "Sending..." : "Send Invite"}
-                </button>
+
+              {/* Tabs: Email / Link */}
+              <div className="flex gap-0 border-b border-stroke">
+                {(["email", "link"] as const).map(t => (
+                  <button key={t} onClick={() => setInviteTab(t)}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${inviteTab === t ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+                    {t === "email" ? "Email Invite" : "Share Link"}
+                  </button>
+                ))}
               </div>
+
+              {inviteTab === "email" && (
+                <>
+                  <div><label className="text-sm font-medium">Name <span className="text-destructive">*</span></label>
+                    <input value={inviteForm.name} onChange={e => setInviteForm(f => ({ ...f, name: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Full name" /></div>
+                  <div><label className="text-sm font-medium">Email <span className="text-destructive">*</span></label>
+                    <input type="email" value={inviteForm.email} onChange={e => setInviteForm(f => ({ ...f, email: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="email@example.com" /></div>
+                  <div><label className="text-sm font-medium">Department</label>
+                    <select value={inviteForm.department} onChange={e => setInviteForm(f => ({ ...f, department: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                      <option value="">Select department</option>
+                      {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select></div>
+                  <div><label className="text-sm font-medium">Role <span className="text-destructive">*</span></label>
+                    <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                      {appRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select></div>
+                  <p className="text-xs text-muted-foreground mt-1">If you don't see the email, please check your spam or junk folder.</p>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button onClick={() => setShowInvite(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                    <button onClick={handleInvite} disabled={inviteLoading}
+                      className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50">
+                      <Envelope size={14} /> {inviteLoading ? "Sending..." : "Send Invite"}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {inviteTab === "link" && (
+                <div className="space-y-4">
+                  <div><label className="text-sm font-medium">Role for new members</label>
+                    <select value={inviteForm.role} onChange={e => setInviteForm(f => ({ ...f, role: e.target.value }))}
+                      className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none">
+                      {appRoles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select></div>
+
+                  {inviteLink ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Invite Link</label>
+                      <div className="flex items-center gap-2">
+                        <input readOnly value={inviteLink}
+                          className="flex-1 rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none truncate" />
+                        <button onClick={copyLink}
+                          className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 shrink-0">
+                          {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                        </button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">This link expires in 7 days. Anyone with this link can join your organization.</p>
+                    </div>
+                  ) : (
+                    <button onClick={generateInviteLink}
+                      className="w-full flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90">
+                      <LinkIcon size={14} /> Generate Invite Link
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </>
