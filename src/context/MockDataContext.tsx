@@ -291,6 +291,7 @@ interface MockDataContextType {
   deleteEvent: (id: string) => Promise<void>;
   addOrganisation: (name: string) => Promise<Organisation | null>;
   updateOrganisation: (id: string, updates: Partial<Organisation>) => Promise<void>;
+  deleteOrganisation: (id: string) => Promise<void>;
   switchOrganisation: (orgId: string) => void;
   addDepartment: (dept: Omit<Department, "id">) => Promise<Department | null>;
   updateDepartment: (id: string, updates: Partial<Department>) => Promise<void>;
@@ -298,6 +299,9 @@ interface MockDataContextType {
   addTask: (task: Omit<Task, "id" | "subtasks" | "created_at">) => Promise<Task | null>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  addSubtask: (taskId: string, subtask: Omit<SubTask, "id" | "task_id">) => Promise<SubTask | null>;
+  updateSubtask: (id: string, updates: Partial<SubTask>) => Promise<void>;
+  deleteSubtask: (id: string) => Promise<void>;
   addBill: (bill: Partial<Bill>) => Promise<Bill | null>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<void>;
   deleteBill: (id: string) => Promise<void>;
@@ -535,7 +539,9 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const ev = mapEvent(payload.new);
-          if (ev.org_id === orgId) setEvents(prev => [...prev, ev]);
+          if (ev.org_id === orgId) {
+            setEvents(prev => prev.some(e => e.id === ev.id) ? prev : [...prev, ev]);
+          }
         } else if (payload.eventType === 'UPDATE') {
           setEvents(prev => prev.map(e => e.id === payload.new.id ? mapEvent(payload.new) : e));
         } else if (payload.eventType === 'DELETE') {
@@ -553,7 +559,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setTasks(prev => [...prev, mapTask(payload.new, [])]);
+          const newTask = mapTask(payload.new, []);
+          setTasks(prev => prev.some(t => t.id === newTask.id) ? prev : [...prev, newTask]);
         } else if (payload.eventType === 'UPDATE') {
           setTasks(prev => prev.map(t => t.id === payload.new.id ? mapTask(payload.new, t.subtasks) : t));
         } else if (payload.eventType === 'DELETE') {
@@ -583,7 +590,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents' }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setDocuments(prev => [...prev, mapDocument(payload.new)]);
+          const newDoc = mapDocument(payload.new);
+          setDocuments(prev => prev.some(d => d.id === newDoc.id) ? prev : [...prev, newDoc]);
         } else if (payload.eventType === 'UPDATE') {
           setDocuments(prev => prev.map(d => d.id === payload.new.id ? mapDocument(payload.new) : d));
         } else if (payload.eventType === 'DELETE') {
@@ -593,9 +601,22 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_comments' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const c = payload.new as any;
-          setTaskComments(prev => [...prev, { id: c.id, task_id: c.task_id, author_id: c.author_id || "", body: c.body, created_at: c.created_at }]);
+          setTaskComments(prev => prev.some(existing => existing.id === c.id) ? prev : [...prev, { id: c.id, task_id: c.task_id, author_id: c.author_id || "", body: c.body, created_at: c.created_at }]);
         } else if (payload.eventType === 'DELETE') {
           setTaskComments(prev => prev.filter(c => c.id !== payload.old.id));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'organisations' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const row = payload.new as any;
+          setOrganisations(prev => prev.some(o => o.id === row.id)
+            ? prev
+            : [...prev, { id: row.id, name: row.name, logo: row.logo, active: row.id === orgId }]);
+        } else if (payload.eventType === 'UPDATE') {
+          const row = payload.new as any;
+          setOrganisations(prev => prev.map(o => o.id === row.id ? { ...o, name: row.name, logo: row.logo } : o));
+        } else if (payload.eventType === 'DELETE') {
+          setOrganisations(prev => prev.filter(o => o.id !== payload.old.id));
         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, (payload) => {
@@ -623,8 +644,8 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
 
   // Fetch team members
   const refreshTeamMembers = useCallback(async () => {
-    if (!auth.user) return;
-    const { data: members } = await supabase.from("team_members").select("*");
+    if (!auth.user || !orgId) return;
+    const { data: members } = await supabase.from("team_members").select("*").eq("org_id", orgId);
     if (members) {
       setTeamMembers(members as TeamMember[]);
       const userIds = members.map((m: any) => m.user_id);
@@ -649,7 +670,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
         }
       }
     }
-  }, [auth.user?.id]);
+  }, [auth.user?.id, orgId]);
 
   useEffect(() => {
     if (auth.user) refreshTeamMembers();
@@ -755,6 +776,39 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
     await supabase.from("organisations").update(dbUpdates).eq("id", id);
   };
 
+  const deleteOrganisation = async (id: string) => {
+    const { data: orgEvents } = await supabase.from("events").select("id").eq("org_id", id);
+    const eventIds = (orgEvents || []).map((e: any) => e.id);
+
+    if (eventIds.length > 0) {
+      await supabase.from("tasks").delete().in("event_id", eventIds);
+      await supabase.from("departments").delete().in("event_id", eventIds);
+      await supabase.from("bills").delete().in("event_id", eventIds);
+      await supabase.from("documents").delete().in("event_id", eventIds);
+      await supabase.from("activities").delete().in("event_id", eventIds);
+    }
+
+    await supabase.from("team_members").delete().eq("org_id", id);
+    await supabase.from("organisations").delete().eq("id", id);
+
+    if (orgId === id && auth.user) {
+      const { data: nextMembership } = await supabase
+        .from("team_members")
+        .select("org_id")
+        .eq("user_id", auth.user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (nextMembership?.org_id) {
+        setOrgId(nextMembership.org_id);
+        setOrganisations(prev => prev.map(o => ({ ...o, active: o.id === nextMembership.org_id })));
+      } else {
+        setOrgId(null);
+        setOrganisations([]);
+      }
+    }
+  };
+
   const switchOrganisation = (newOrgId: string) => {
     setOrgId(newOrgId);
     setOrganisations(prev => prev.map(o => ({ ...o, active: o.id === newOrgId })));
@@ -823,6 +877,46 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
 
   const deleteTask = async (id: string) => {
     await supabase.from("tasks").delete().eq("id", id);
+  };
+
+  const addSubtask = async (taskId: string, subtask: Omit<SubTask, "id" | "task_id">): Promise<SubTask | null> => {
+    const { data, error } = await supabase.from("subtasks").insert({
+      task_id: taskId,
+      title: subtask.title,
+      completed: subtask.completed,
+      assignee_id: subtask.assignee_id || null,
+      priority: subtask.priority || "normal",
+      status: subtask.status || "not-started",
+    }).select().single();
+
+    if (error) {
+      console.error("addSubtask error:", error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      completed: data.completed,
+      assignee_id: data.assignee_id || undefined,
+      priority: data.priority as TaskPriority,
+      status: data.status as TaskStatus,
+      task_id: data.task_id,
+    };
+  };
+
+  const updateSubtask = async (id: string, updates: Partial<SubTask>) => {
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+    if (updates.assignee_id !== undefined) dbUpdates.assignee_id = updates.assignee_id;
+    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    await supabase.from("subtasks").update(dbUpdates).eq("id", id);
+  };
+
+  const deleteSubtask = async (id: string) => {
+    await supabase.from("subtasks").delete().eq("id", id);
   };
 
   const addBill = async (bill: Partial<Bill>): Promise<Bill | null> => {
@@ -966,9 +1060,9 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
       getCommentsByTask, getBillsByEvent, getBillEditLogs, getDocsByEvent, getActivitiesByEvent, getUserNotifications,
       isFreePlan: false,
       addEvent, updateEvent, deleteEvent,
-      addOrganisation, updateOrganisation, switchOrganisation,
+      addOrganisation, updateOrganisation, deleteOrganisation, switchOrganisation,
       addDepartment, updateDepartment, deleteDepartment,
-      addTask, updateTask, deleteTask,
+      addTask, updateTask, deleteTask, addSubtask, updateSubtask, deleteSubtask,
       addBill, updateBill, deleteBill,
       addDocument, deleteDocument,
       addComment, addActivity,
