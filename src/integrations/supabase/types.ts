@@ -365,6 +365,54 @@ export type Database = {
         }
         Relationships: []
       }
+      join_tokens: {
+        Row: {
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expires_at: string
+          id: string
+          org_id: string
+          role: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          event_id?: string | null
+          expires_at?: string
+          id?: string
+          org_id: string
+          role?: string
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          event_id?: string | null
+          expires_at?: string
+          id?: string
+          org_id?: string
+          role?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_tokens_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_tokens_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -662,6 +710,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_join_token: { Args: { _token: string }; Returns: Json }
       get_user_org_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_role: {
         Args: { _user_id: string }
