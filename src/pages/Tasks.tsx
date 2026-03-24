@@ -37,8 +37,10 @@ export default function TasksPage() {
   const [searchParams] = useSearchParams();
   const {
     tasks, events, getProfile, getDepartment, getEvent, currentUser,
-    getCommentsByTask, setTasks, profiles, departments
+    getCommentsByTask, profiles, departments, teamProfiles,
+    addTask: dbAddTask, updateTask: dbUpdateTask
   } = useMockData();
+  const assigneePool = teamProfiles.length > 0 ? teamProfiles : profiles;
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const defaultEvent = searchParams.get("event") || events[0]?.id || "";
   const [eventFilter, setEventFilter] = useState(defaultEvent);
@@ -89,11 +91,11 @@ export default function TasksPage() {
     return 0;
   });
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
     const taskId = result.draggableId;
     const newStatus = result.destination.droppableId as TaskStatus;
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+    await dbUpdateTask(taskId, { status: newStatus });
     toast({ title: "Task moved", description: `Moved to ${newStatus}` });
   };
 
@@ -105,49 +107,59 @@ export default function TasksPage() {
     });
   };
 
-  const bulkChangeStatus = (status: TaskStatus) => {
-    setTasks(tasks.map(t => selectedTasks.has(t.id) ? { ...t, status } : t));
+  const bulkChangeStatus = async (status: TaskStatus) => {
+    await Promise.all(Array.from(selectedTasks).map(id => dbUpdateTask(id, { status })));
     toast({ title: `${selectedTasks.size} tasks updated` });
     setSelectedTasks(new Set());
   };
 
-  const handleInlineCreate = (columnStatus: TaskStatus) => {
+  const handleInlineCreate = async (columnStatus: TaskStatus) => {
     const title = newTaskTitle[columnStatus]?.trim();
     if (!title) return;
-    const newTask: Task = {
-      id: `t_new_${Date.now()}`, event_id: "e1", dept_id: "d1", title,
-      description: "", assignee_id: currentUser.id, deadline: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
-      priority: "normal", status: columnStatus, subtasks: [],
-      created_by: currentUser.id, created_at: new Date().toISOString(),
-    };
-    setTasks([...tasks, newTask]);
+    if (!eventFilter) {
+      toast({ title: "Please select an event", variant: "destructive" });
+      return;
+    }
+    const deptForEvent = departments.find(d => d.event_id === eventFilter);
+    await dbAddTask({
+      event_id: eventFilter,
+      dept_id: deptForEvent?.id || "",
+      title,
+      description: "",
+      assignee_id: currentUser.id,
+      deadline: new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
+      priority: "normal",
+      status: columnStatus,
+      created_by: currentUser.id,
+      labels: [],
+    });
     setNewTaskTitle(prev => ({ ...prev, [columnStatus]: "" }));
     toast({ title: "Task created" });
   };
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (!addForm.title.trim()) {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
-    const eventId = addForm.event_id || events[0]?.id || "e1";
+    if (!addForm.event_id) {
+      toast({ title: "Event is required", variant: "destructive" });
+      return;
+    }
+    const eventId = addForm.event_id;
     const deptForEvent = departments.find(d => d.event_id === eventId);
-    const newTask: Task = {
-      id: `t_new_${Date.now()}`,
+    await dbAddTask({
       event_id: eventId,
-      dept_id: deptForEvent?.id || "d1",
+      dept_id: deptForEvent?.id || "",
       title: addForm.title.trim(),
       description: addForm.description,
       assignee_id: addForm.assignee_id || currentUser.id,
       deadline: addForm.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split("T")[0],
       priority: addForm.priority,
       status: addForm.status,
-      subtasks: [],
       created_by: currentUser.id,
-      created_at: new Date().toISOString(),
       labels: addForm.labels ? addForm.labels.split(",").map(l => l.trim()).filter(Boolean) : undefined,
-    };
-    setTasks([...tasks, newTask]);
+    });
     setShowAddModal(false);
     setAddForm({ title: "", description: "", event_id: "", assignee_id: "", deadline: "", priority: "normal", status: "not-started", labels: "" });
     toast({ title: "Task created" });
@@ -217,7 +229,7 @@ export default function TasksPage() {
           className="rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm pr-8 focus:outline-none focus:border-muted-foreground">
           <option value="all">All Assignees</option>
           <option value={currentUser.id}>My Tasks</option>
-          {profiles.filter(p => p.id !== currentUser.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                       {assigneePool.filter(p => p.id !== currentUser.id).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         {viewMode === "list" && (
           <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
@@ -435,7 +447,7 @@ export default function TasksPage() {
                     <select value={addForm.assignee_id} onChange={e => setAddForm(p => ({ ...p, assignee_id: e.target.value }))}
                       className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none focus:border-muted-foreground">
                       <option value="">Assign to...</option>
-                      {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                       {assigneePool.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                   <div>
