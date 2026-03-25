@@ -31,7 +31,7 @@ const navItemInactive = `${navItemBase} text-muted-foreground hover:bg-selected 
 const iconBtnClass = "flex h-5 w-5 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-[hsl(0_0%_88%)] transition-colors";
 
 export function NavPanel() {
-  const { events, getDeptsByEvent, departments, setEvents, currentUser, documents } = useMockData();
+  const { events, getDeptsByEvent, departments, setEvents, currentUser, documents, addEvent: dbAddEvent, orgId } = useMockData();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams<{ id: string }>();
