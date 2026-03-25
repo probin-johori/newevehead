@@ -336,9 +336,34 @@ export default function BillingPage() {
                       {(() => { const s = getProfile(bill.submitted_by); return s ? <div className="flex items-center gap-1.5"><UserAvatar name={s.name} color={s.avatar_color} size="sm" /><span>{s.name}</span></div> : null; })()}
                     </div>
                   </div>
-                  {bill.bill_file_url && (
-                    <div className="flex items-center gap-1.5 text-sm text-accent cursor-pointer hover:underline border-t border-stroke pt-3">
-                      <FileText size={14} /> {bill.bill_file_url}
+                  {/* Invoice/Attachment section */}
+                  {(bill.invoice_files && bill.invoice_files.length > 0) || bill.invoice_file || bill.bill_file_url ? (
+                    <div className="border-t border-stroke pt-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Attachments</p>
+                      <div className="space-y-2">
+                        {bill.invoice_files && bill.invoice_files.length > 0 && bill.invoice_files.map((f, i) => (
+                          <a key={i} href={f} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-accent hover:underline">
+                            <FileText size={14} /> {f.split('/').pop() || `Attachment ${i + 1}`}
+                          </a>
+                        ))}
+                        {bill.invoice_file && !bill.invoice_files?.includes(bill.invoice_file) && (
+                          <div className="flex items-center gap-2 text-sm text-accent">
+                            <FileText size={14} /> {bill.invoice_file}
+                          </div>
+                        )}
+                        {bill.bill_file_url && !bill.invoice_files?.includes(bill.bill_file_url) && (
+                          <a href={bill.bill_file_url} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-sm text-accent hover:underline">
+                            <FileText size={14} /> {bill.bill_file_url.split('/').pop() || 'View file'}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-t border-stroke pt-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Attachments</p>
+                      <p className="text-sm text-muted-foreground">No attachments</p>
                     </div>
                   )}
                   <div className="flex gap-2 border-t border-stroke pt-3">

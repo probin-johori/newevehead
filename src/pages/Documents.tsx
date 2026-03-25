@@ -277,14 +277,25 @@ export default function DocumentsPage() {
               {/* Details */}
               {detailTab === "details" && (
                 <>
-                  {/* Preview area */}
-                  <div className="flex items-center justify-center py-8 bg-secondary rounded-xl cursor-pointer hover:bg-secondary/80 transition-colors"
-                    onClick={() => setPreviewDoc(doc)}>
-                    <div className="text-center">
-                      <FileText size={48} className="text-muted-foreground/30 mx-auto" />
-                      <p className="text-xs text-muted-foreground mt-2">Click to preview</p>
+                  {/* Preview area — show actual content if file_url exists */}
+                  {doc.file_url && getFileType(doc.name) === 'image' ? (
+                    <div className="rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setPreviewDoc(doc)}>
+                      <img src={doc.file_url} alt={doc.name} className="w-full max-h-48 object-contain bg-secondary rounded-xl" />
                     </div>
-                  </div>
+                  ) : doc.file_url && getFileType(doc.name) === 'pdf' ? (
+                    <div className="rounded-xl overflow-hidden cursor-pointer" onClick={() => setPreviewDoc(doc)}>
+                      <iframe src={doc.file_url} className="w-full h-48 rounded-xl border border-stroke pointer-events-none" title={doc.name} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-8 bg-secondary rounded-xl cursor-pointer hover:bg-secondary/80 transition-colors"
+                      onClick={() => setPreviewDoc(doc)}>
+                      <div className="text-center">
+                        <FileText size={48} className="text-muted-foreground/30 mx-auto" />
+                        <p className="text-xs text-muted-foreground mt-2">Click to preview</p>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Description</p>
