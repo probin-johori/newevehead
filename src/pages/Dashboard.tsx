@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMockData, formatINRShort, formatDate } from "@/context/MockDataContext";
+import { useMockData, formatINRShort, formatDate, formatTimeAgo } from "@/context/MockDataContext";
 import { StatusBadge } from "@/components/StatusBadge";
-import { X, Plus, CaretDown } from "@phosphor-icons/react";
+import { X, Plus, CaretDown, ListChecks, Receipt, Users, CalendarBlank, ChartBar } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { EventImageUpload } from "@/components/EventImageUpload";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { events, departments, tasks, bills, getTasksByEvent, currentUser, addEvent: dbAddEvent, orgId } = useMockData();
-  const [deptFilter, setDeptFilter] = useState<string | null>(null);
-  const [showDeptDropdown, setShowDeptDropdown] = useState(false);
+  const { events, departments, tasks, bills, getTasksByEvent, currentUser, addEvent: dbAddEvent, orgId, getProfile, teamMembers } = useMockData();
+  const [eventFilter, setEventFilter] = useState<string | null>(null);
+  const [showEventDropdown, setShowEventDropdown] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [showPastEvents, setShowPastEvents] = useState(false);
@@ -19,24 +20,35 @@ export default function DashboardPage() {
 
   useScrollLock(showAddEvent);
 
-  const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
-  const filteredDepts = deptFilter ? departments.filter(d => d.name === deptFilter) : departments;
-  const filteredDeptIds = new Set(filteredDepts.map(d => d.id));
-  const filteredEventIds = new Set(filteredDepts.map(d => d.event_id));
-  const filteredEvents = deptFilter ? events.filter(e => filteredEventIds.has(e.id)) : events;
-  const filteredTasks = deptFilter ? tasks.filter(t => filteredDeptIds.has(t.dept_id)) : tasks;
-
   // Split events into upcoming/current vs past
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const upcomingEvents = filteredEvents.filter(e => new Date(e.end_date) >= now || e.status === "planning" || e.status === "active");
-  const pastEvents = filteredEvents.filter(e => new Date(e.end_date) < now && e.status !== "planning" && e.status !== "active");
-  const displayEvents = showPastEvents ? filteredEvents : upcomingEvents;
+  const upcomingEvents = events.filter(e => new Date(e.end_date) >= now || e.status === "planning" || e.status === "active");
+  const pastEvents = events.filter(e => new Date(e.end_date) < now && e.status !== "planning" && e.status !== "active");
+  const displayEvents = showPastEvents ? events : upcomingEvents;
 
-  const totalBudget = filteredEvents.reduce((s, e) => s + e.estimated_budget, 0);
-  const totalSpent = filteredDepts.reduce((s, d) => s + d.spent, 0);
-  const tasksDone = filteredTasks.filter(t => t.status === "completed").length;
-  const overdueTasks = filteredTasks.filter(t => t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date()).length;
+  // Stats — scoped to event filter
+  const statsEvents = eventFilter ? events.filter(e => e.id === eventFilter) : events;
+  const statsEventIds = new Set(statsEvents.map(e => e.id));
+  const statsDepts = departments.filter(d => statsEventIds.has(d.event_id));
+  const statsTasks = tasks.filter(t => statsEventIds.has(t.event_id));
+  const statsBills = bills.filter(b => statsEventIds.has(b.event_id));
+
+  const totalBudget = statsEvents.reduce((s, e) => s + e.estimated_budget, 0);
+  const totalSpent = statsBills.filter(b => b.status === "settled").reduce((s, b) => s + b.amount, 0);
+  const pendingSpend = statsBills.filter(b => ["pending", "dept-verified", "ca-approved"].includes(b.status)).reduce((s, b) => s + b.amount, 0);
+  const allocatedBudget = statsDepts.reduce((s, d) => s + d.allocated_budget, 0);
+  const tasksDone = statsTasks.filter(t => t.status === "completed").length;
+  const tasksTotal = statsTasks.length;
+  const overdueTasks = statsTasks.filter(t => t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date()).length;
+  const activeEvents = statsEvents.filter(e => e.status === "active" || e.status === "planning").length;
+  const teamSize = teamMembers.length;
+
+  // Recent tasks assigned to current user
+  const myRecentTasks = tasks
+    .filter(t => t.assignee_id === currentUser.id)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
 
   const handleAddEvent = async () => {
     if (!addForm.name.trim()) { toast({ title: "Event name is required", variant: "destructive" }); return; }
@@ -69,46 +81,62 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Department Filter — dropdown instead of chips */}
+      {/* Event Filter — scoped to stats only */}
       <div className="flex items-center gap-2 mb-5">
         <div className="relative">
-          <button onClick={() => setShowDeptDropdown(!showDeptDropdown)}
+          <button onClick={() => setShowEventDropdown(!showEventDropdown)}
             className="flex items-center gap-1.5 rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-selected transition-colors">
-            {deptFilter ? deptFilter : "All Departments"}
+            {eventFilter ? events.find(e => e.id === eventFilter)?.name || "Event" : "All Events"}
             <CaretDown size={12} />
           </button>
-          {showDeptDropdown && (
+          {showEventDropdown && (
             <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowDeptDropdown(false)} />
-              <div className="absolute left-0 top-full mt-1 w-48 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
-                <button onClick={() => { setDeptFilter(null); setShowDeptDropdown(false); }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${!deptFilter ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                  All Departments
+              <div className="fixed inset-0 z-10" onClick={() => setShowEventDropdown(false)} />
+              <div className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                <button onClick={() => { setEventFilter(null); setShowEventDropdown(false); }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${!eventFilter ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                  All Events
                 </button>
-                {allDeptNames.map(name => (
-                  <button key={name} onClick={() => { setDeptFilter(name); setShowDeptDropdown(false); }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${deptFilter === name ? "font-medium text-foreground" : "text-muted-foreground"}`}>
-                    {name}
+                {events.map(ev => (
+                  <button key={ev.id} onClick={() => { setEventFilter(ev.id); setShowEventDropdown(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${eventFilter === ev.id ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                    {ev.name}
                   </button>
                 ))}
               </div>
             </>
           )}
         </div>
-        {deptFilter && (
-          <button onClick={() => setDeptFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        {eventFilter && (
+          <button onClick={() => setEventFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <X size={12} /> Clear
           </button>
         )}
       </div>
 
-      {/* Stat Cards */}
+      {/* Extended Stat Cards — 2 rows */}
+      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-4">
+        {[
+          { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
+          { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
+          { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
+          { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
+        ].map((stat, i) => (
+          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+            <div className="flex items-center gap-1.5 mb-1">
+              {stat.icon}
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+            </div>
+            <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
+          </div>
+        ))}
+      </div>
       <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-6">
         {[
-          { label: "Total Budget", value: formatINRShort(totalBudget) },
-          { label: "Total Spent", value: formatINRShort(totalSpent) },
-          { label: "Tasks Completed", value: `${tasksDone}/${filteredTasks.length}` },
+          { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
           { label: "Overdue Tasks", value: String(overdueTasks) },
+          { label: "Active Events", value: String(activeEvents) },
+          { label: "Team Members", value: String(teamSize) },
         ].map((stat, i) => (
           <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
             <p className="text-sm text-muted-foreground">{stat.label}</p>
@@ -117,13 +145,13 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Events Header with "All Events" toggle */}
+      {/* Events Header */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold">Events{deptFilter ? ` — ${deptFilter}` : ""}</h3>
+        <h3 className="text-sm font-semibold">Events</h3>
         {pastEvents.length > 0 && (
           <button onClick={() => setShowPastEvents(!showPastEvents)}
             className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            {showPastEvents ? "Show Upcoming" : `All Events (${filteredEvents.length})`}
+            {showPastEvents ? "Show Upcoming" : `All Events (${events.length})`}
           </button>
         )}
       </div>
@@ -146,7 +174,6 @@ export default function DashboardPage() {
             return (
               <button key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}
                 className="flex flex-col items-center text-center group">
-                {/* Round thumbnail */}
                 <div className="w-20 h-20 rounded-full overflow-hidden mb-3 ring-2 ring-stroke group-hover:ring-foreground/30 transition-all">
                   {ev.image_url ? (
                     <img src={ev.image_url} alt={ev.name} className="w-full h-full object-cover" />
@@ -165,35 +192,29 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Recent Tasks */}
-      {filteredTasks.length > 0 && (
+      {/* Recent Tasks — notification-style list */}
+      {myRecentTasks.length > 0 && (
         <>
-          <h3 className="text-sm font-semibold mb-3">Recent Tasks{deptFilter ? ` — ${deptFilter}` : ""}</h3>
-          <div className="rounded-xl border border-stroke overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stroke">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTasks.slice(0, 5).map(t => {
-                  const ev = events.find(e => e.id === t.event_id);
-                  const overdue = t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date();
-                  return (
-                    <tr key={t.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors" onClick={() => navigate(`/tasks?event=${t.event_id}&task=${t.id}`)}>
-                      <td className="px-4 py-3 font-medium">{t.title}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{ev?.name}</td>
-                      <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                      <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <h3 className="text-sm font-semibold mb-3">My Tasks</h3>
+          <div className="rounded-xl border border-stroke overflow-hidden divide-y divide-stroke">
+            {myRecentTasks.map(t => {
+              const ev = events.find(e => e.id === t.event_id);
+              const overdue = t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date();
+              return (
+                <button key={t.id}
+                  onClick={() => navigate(`/events/${t.event_id}?tab=tasks&task=${t.id}`)}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-selected transition-colors">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${t.status === "completed" ? "bg-emerald-500" : overdue ? "bg-red-500" : t.status === "in-progress" ? "bg-amber-500" : "bg-muted-foreground/30"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {ev?.name}{t.deadline ? ` · Due ${formatDate(t.deadline)}` : ""}
+                    </p>
+                  </div>
+                  <StatusBadge status={t.status} />
+                </button>
+              );
+            })}
           </div>
         </>
       )}
@@ -210,7 +231,6 @@ export default function DashboardPage() {
                 <button onClick={() => setShowAddEvent(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
               </div>
 
-              {/* Square Thumbnail with rounded corners */}
               <div>
                 <label className="text-sm font-medium">Event Thumbnail</label>
                 {addForm.image_url ? (
