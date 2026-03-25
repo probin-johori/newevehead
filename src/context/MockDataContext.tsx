@@ -573,7 +573,7 @@ export function MockDataProvider({ children }: { children: ReactNode }) {
           setTasks(prev => prev.map(t => {
             if (t.id !== st.task_id) return t;
             const existing = t.subtasks.filter(s => s.id !== st.id);
-            return { ...t, subtasks: [...existing, { id: st.id, title: st.title, completed: st.completed, assignee_id: st.assignee_id, priority: st.priority, status: st.status }] };
+            return { ...t, subtasks: [...existing, { id: st.id, title: st.title, completed: st.completed, assignee_id: st.assignee_id, priority: st.priority, status: st.status, task_id: st.task_id }] };
           }));
         } else if (payload.eventType === 'DELETE') {
           setTasks(prev => prev.map(t => ({ ...t, subtasks: t.subtasks.filter(s => s.id !== payload.old.id) })));
