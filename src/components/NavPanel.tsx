@@ -96,13 +96,12 @@ export function NavPanel() {
     });
   };
 
-  const handleAddEvent = () => {
+  const handleAddEvent = async () => {
     if (!addEventForm.name.trim()) {
       toast({ title: "Event name is required", variant: "destructive" });
       return;
     }
-    const newEvent = {
-      id: `e_${Date.now()}`,
+    const newEvent = await dbAddEvent({
       name: addEventForm.name.trim(),
       location: addEventForm.location,
       start_date: addEventForm.start_date || new Date().toISOString().split("T")[0],
@@ -114,12 +113,11 @@ export function NavPanel() {
       poc_id: currentUser.id,
       created_by: currentUser.id,
       image_url: addEventForm.image_url || undefined,
-    };
-    setEvents([...events, newEvent]);
+    });
     setShowAddEvent(false);
     setAddEventForm({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
     toast({ title: "Event created" });
-    navigate(`/events/${newEvent.id}`);
+    if (newEvent) navigate(`/events/${newEvent.id}`);
   };
 
   return (
