@@ -42,6 +42,31 @@ interface TaskDetailSheetProps {
   onOpenProfile?: (userId: string) => void;
 }
 
+// Render comment body with @mentions styled
+function MentionName({ name, profiles, onOpenProfile }: { name: string; profiles: any[]; onOpenProfile?: (id: string) => void }) {
+  const profile = profiles.find(p => p.name === name);
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <button
+        className="font-semibold text-accent hover:underline"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => profile && onOpenProfile?.(profile.id)}
+      >
+        @{name}
+      </button>
+      {showTooltip && profile && (
+        <span className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border border-stroke bg-card shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+          <span className="font-medium">{profile.name}</span>
+          <br />
+          <span className="text-muted-foreground">{profile.email}</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSheetProps) {
   const navigate = useNavigate();
   const {
