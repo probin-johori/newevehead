@@ -320,7 +320,7 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
                         <button onClick={() => setConfirmEdit(c.id)} className="rounded-full bg-foreground px-3 py-1.5 text-xs text-background font-medium">Save</button>
                         <button onClick={() => { setEditingComment(null); setEditBody(""); }} className="text-xs text-muted-foreground">Cancel</button>
                       </div>
-                    ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{c.body}</p>}
+                    ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{renderCommentBody(c.body)}</p>}
                   </div>
                 </div>
               );
