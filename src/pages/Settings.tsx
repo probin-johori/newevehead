@@ -62,6 +62,14 @@ export default function SettingsPage() {
   const [inAppNotifs, setInAppNotifs] = useState(true);
   const [twoFA, setTwoFA] = useState(false);
 
+  // Org management
+  const currentOrg = organisations.find(o => o.id === orgId);
+  const [editOrgName, setEditOrgName] = useState(currentOrg?.name || "");
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+  const [showDeleteOrg, setShowDeleteOrg] = useState(false);
+  const [deleteOrgConfirmName, setDeleteOrgConfirmName] = useState("");
+  const [twoFA, setTwoFA] = useState(false);
+
   const togglePerm = (role: string, feat: string, perm: string) => {
     setPermMatrix(prev => ({
       ...prev,
