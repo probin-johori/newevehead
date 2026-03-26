@@ -77,7 +77,8 @@ export function NavPanel() {
 
   const mainTab = getMainTab(location.pathname);
   const selectedEventId = params.id || (location.pathname.startsWith("/events/") ? location.pathname.split("/")[2] : null);
-  const visibleEvents = showAllEvents ? events : events.slice(0, 4);
+  const activeEvents = events.filter(e => e.status === "planning" || e.status === "active");
+  const visibleEvents = showAllEvents ? activeEvents : activeEvents.slice(0, 4);
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
 
   // Get custom folders from documents
