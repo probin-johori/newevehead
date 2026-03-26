@@ -114,35 +114,38 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Extended Stat Cards — 2 rows */}
-      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-4">
-        {[
-          { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
-          { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
-          { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
-          { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
-        ].map((stat, i) => (
-          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
-            <div className="flex items-center gap-1.5 mb-1">
-              {stat.icon}
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+      {/* KPI Cards — single container, two rows */}
+      <div className="border border-stroke rounded-xl overflow-hidden mb-6">
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
+            { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
+            { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
+            { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                {stat.icon}
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
             </div>
-            <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-6">
-        {[
-          { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
-          { label: "Overdue Tasks", value: String(overdueTasks) },
-          { label: "Active Events", value: String(activeEvents) },
-          { label: "Team Members", value: String(teamSize) },
-        ].map((stat, i) => (
-          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
-            <p className="text-sm text-muted-foreground">{stat.label}</p>
-            <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="border-t border-stroke" />
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
+            { label: "Overdue Tasks", value: String(overdueTasks) },
+            { label: "Active Events", value: String(activeEvents) },
+            { label: "Team Members", value: String(teamSize) },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Events Header */}
