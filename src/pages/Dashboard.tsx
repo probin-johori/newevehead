@@ -20,12 +20,10 @@ export default function DashboardPage() {
 
   useScrollLock(showAddEvent);
 
-  // Split events into upcoming/current vs past
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const upcomingEvents = events.filter(e => new Date(e.end_date) >= now || e.status === "planning" || e.status === "active");
-  const pastEvents = events.filter(e => new Date(e.end_date) < now && e.status !== "planning" && e.status !== "active");
-  const displayEvents = showPastEvents ? events : upcomingEvents;
+  // Only show active/planning events on dashboard
+  const activeEvents2 = events.filter(e => e.status === "planning" || e.status === "active");
+  const pastEvents = events.filter(e => e.status === "completed" || e.status === "archived");
+  const displayEvents = activeEvents2;
 
   // Stats — scoped to event filter
   const statsEvents = eventFilter ? events.filter(e => e.id === eventFilter) : events;
