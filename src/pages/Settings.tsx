@@ -114,12 +114,33 @@ export default function SettingsPage() {
 
   const tabs = [
     ...(currentUser.role === "sa" ? [
+      { key: "organisation", label: "Organisation" },
       { key: "permissions", label: "Permissions" },
       { key: "subscription", label: "Subscription" },
     ] : []),
     { key: "profile", label: "My Profile" },
     { key: "notifications", label: "Notifications" },
   ];
+
+  const handleSaveOrgName = async () => {
+    if (!orgId || !editOrgName.trim()) return;
+    await updateOrganisation(orgId, { name: editOrgName.trim() });
+    setIsEditingOrg(false);
+    toast({ title: "Organisation name updated" });
+  };
+
+  const handleDeleteOrg = async () => {
+    if (!orgId || !currentOrg) return;
+    if (deleteOrgConfirmName !== currentOrg.name) {
+      toast({ title: "Name doesn't match", variant: "destructive" });
+      return;
+    }
+    await deleteOrganisation(orgId);
+    setShowDeleteOrg(false);
+    setDeleteOrgConfirmName("");
+    toast({ title: "Organisation deleted" });
+    navigate("/dashboard");
+  };
 
   return (
     <div className="p-6 w-full">
