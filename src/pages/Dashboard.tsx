@@ -150,9 +150,9 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Events</h3>
         {pastEvents.length > 0 && (
-          <button onClick={() => setShowPastEvents(!showPastEvents)}
+          <button onClick={() => navigate("/past-events")}
             className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            {showPastEvents ? "Show Upcoming" : `All Events (${events.length})`}
+            All Events ({events.length})
           </button>
         )}
       </div>
