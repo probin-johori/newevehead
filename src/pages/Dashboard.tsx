@@ -15,7 +15,6 @@ export default function DashboardPage() {
   const [showEventDropdown, setShowEventDropdown] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [showPastEvents, setShowPastEvents] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
 
   useScrollLock(showAddEvent);
