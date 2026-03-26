@@ -26,7 +26,8 @@ const planDetails = [
 ];
 
 export default function SettingsPage() {
-  const { currentUser, subscription, events } = useMockData();
+  const { currentUser, subscription, events, organisations, updateOrganisation, deleteOrganisation, orgId } = useMockData();
+  const auth = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || (currentUser.role === "sa" ? "permissions" : "profile");
