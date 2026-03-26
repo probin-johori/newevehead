@@ -77,7 +77,8 @@ export function NavPanel() {
 
   const mainTab = getMainTab(location.pathname);
   const selectedEventId = params.id || (location.pathname.startsWith("/events/") ? location.pathname.split("/")[2] : null);
-  const visibleEvents = showAllEvents ? events : events.slice(0, 4);
+  const activeEvents = events.filter(e => e.status === "planning" || e.status === "active");
+  const visibleEvents = showAllEvents ? activeEvents : activeEvents.slice(0, 4);
   const uniqueDepts = Array.from(new Set(departments.map(d => d.name)));
 
   // Get custom folders from documents
@@ -157,12 +158,17 @@ export function NavPanel() {
                       </NavLink>
                     );
                   })}
-                  {events.length > 4 && (
+                  {activeEvents.length > 4 && (
                     <button onClick={() => setShowAllEvents(!showAllEvents)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <DotsThreeOutline size={12} weight="fill" />
                       {showAllEvents ? "Show less" : "More"}
                     </button>
+                  )}
+                  {events.some(e => e.status === "completed" || e.status === "archived") && (
+                    <NavLink to="/past-events" className={navItemInactive}>
+                      <span className="text-xs">📁</span> Past Events
+                    </NavLink>
                   )}
                 </div>
               </div>

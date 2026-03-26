@@ -15,17 +15,14 @@ export default function DashboardPage() {
   const [showEventDropdown, setShowEventDropdown] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [showPastEvents, setShowPastEvents] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
 
   useScrollLock(showAddEvent);
 
-  // Split events into upcoming/current vs past
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const upcomingEvents = events.filter(e => new Date(e.end_date) >= now || e.status === "planning" || e.status === "active");
-  const pastEvents = events.filter(e => new Date(e.end_date) < now && e.status !== "planning" && e.status !== "active");
-  const displayEvents = showPastEvents ? events : upcomingEvents;
+  // Only show active/planning events on dashboard
+  const activeEvents2 = events.filter(e => e.status === "planning" || e.status === "active");
+  const pastEvents = events.filter(e => e.status === "completed" || e.status === "archived");
+  const displayEvents = activeEvents2;
 
   // Stats — scoped to event filter
   const statsEvents = eventFilter ? events.filter(e => e.id === eventFilter) : events;
@@ -114,44 +111,47 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Extended Stat Cards — 2 rows */}
-      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-4">
-        {[
-          { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
-          { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
-          { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
-          { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
-        ].map((stat, i) => (
-          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
-            <div className="flex items-center gap-1.5 mb-1">
-              {stat.icon}
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
+      {/* KPI Cards — single container, two rows */}
+      <div className="border border-stroke rounded-xl overflow-hidden mb-6">
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
+            { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
+            { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
+            { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                {stat.icon}
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
             </div>
-            <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-6">
-        {[
-          { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
-          { label: "Overdue Tasks", value: String(overdueTasks) },
-          { label: "Active Events", value: String(activeEvents) },
-          { label: "Team Members", value: String(teamSize) },
-        ].map((stat, i) => (
-          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
-            <p className="text-sm text-muted-foreground">{stat.label}</p>
-            <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="border-t border-stroke" />
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
+            { label: "Overdue Tasks", value: String(overdueTasks) },
+            { label: "Active Events", value: String(activeEvents) },
+            { label: "Team Members", value: String(teamSize) },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Events Header */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold">Events</h3>
         {pastEvents.length > 0 && (
-          <button onClick={() => setShowPastEvents(!showPastEvents)}
+          <button onClick={() => navigate("/past-events")}
             className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            {showPastEvents ? "Show Upcoming" : `All Events (${events.length})`}
+            All Events ({events.length})
           </button>
         )}
       </div>

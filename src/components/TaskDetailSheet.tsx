@@ -42,6 +42,31 @@ interface TaskDetailSheetProps {
   onOpenProfile?: (userId: string) => void;
 }
 
+// Render comment body with @mentions styled
+function MentionName({ name, profiles, onOpenProfile }: { name: string; profiles: any[]; onOpenProfile?: (id: string) => void }) {
+  const profile = profiles.find(p => p.name === name);
+  const [showTooltip, setShowTooltip] = useState(false);
+  return (
+    <span className="relative inline-block">
+      <button
+        className="font-semibold text-accent hover:underline"
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={() => profile && onOpenProfile?.(profile.id)}
+      >
+        @{name}
+      </button>
+      {showTooltip && profile && (
+        <span className="absolute left-0 bottom-full mb-1 z-50 rounded-lg border border-stroke bg-card shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+          <span className="font-medium">{profile.name}</span>
+          <br />
+          <span className="text-muted-foreground">{profile.email}</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSheetProps) {
   const navigate = useNavigate();
   const {
@@ -50,6 +75,27 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
     updateTask: dbUpdateTask, deleteTask: dbDeleteTask, addComment: dbAddComment,
     departments,
   } = useMockData();
+
+  const renderCommentBody = (body: string) => {
+    // Split on @Name patterns
+    const regex = /@([\w\s]+?)(?=\s@|$|\s{2}|[.,!?])/g;
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(body)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(body.slice(lastIndex, match.index));
+      }
+      elements.push(
+        <MentionName key={match.index} name={match[1].trim()} profiles={profiles} onOpenProfile={onOpenProfile} />
+      );
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < body.length) {
+      elements.push(body.slice(lastIndex));
+    }
+    return elements.length > 0 ? elements : body;
+  };
 
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<string | null>(null);
@@ -320,7 +366,7 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
                         <button onClick={() => setConfirmEdit(c.id)} className="rounded-full bg-foreground px-3 py-1.5 text-xs text-background font-medium">Save</button>
                         <button onClick={() => { setEditingComment(null); setEditBody(""); }} className="text-xs text-muted-foreground">Cancel</button>
                       </div>
-                    ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{c.body}</p>}
+                    ) : <p className="text-sm text-foreground/90 leading-relaxed mt-0.5">{renderCommentBody(c.body)}</p>}
                   </div>
                 </div>
               );
