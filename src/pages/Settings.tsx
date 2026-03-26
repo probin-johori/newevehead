@@ -68,7 +68,6 @@ export default function SettingsPage() {
   const [isEditingOrg, setIsEditingOrg] = useState(false);
   const [showDeleteOrg, setShowDeleteOrg] = useState(false);
   const [deleteOrgConfirmName, setDeleteOrgConfirmName] = useState("");
-  const [twoFA, setTwoFA] = useState(false);
 
   const togglePerm = (role: string, feat: string, perm: string) => {
     setPermMatrix(prev => ({
