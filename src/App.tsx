@@ -57,6 +57,7 @@ function AppRoutes() {
         <Route path="departments/:name" element={<DepartmentsPage />} />
         <Route path="departments/:deptName/events/:eventId" element={<DeptEventDetailPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="past-events" element={<PastEventsPage />} />
       </Route>
       <Route path="/join/:token" element={<JoinOrgPage />} />
       <Route path="*" element={<NotFound />} />

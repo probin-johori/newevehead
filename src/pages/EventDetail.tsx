@@ -264,7 +264,13 @@ export default function EventDetailPage() {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-foreground">{event.name}</h1>
-            <StatusBadge status={event.status} />
+            <select value={event.status} onChange={e => dbUpdateEvent(event.id, { status: e.target.value as any })}
+              className="rounded-full border border-stroke bg-secondary px-2 py-0.5 text-[11px] font-medium focus:outline-none cursor-pointer">
+              <option value="planning">Planning</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
             <button onClick={handleOpenEdit} className="ml-2 flex h-6 w-6 items-center justify-center rounded-md bg-icon-btn text-icon-btn-fg hover:bg-selected transition-colors">
               <PencilSimple size={13} />
             </button>
