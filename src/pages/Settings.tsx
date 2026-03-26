@@ -157,6 +157,63 @@ export default function SettingsPage() {
       </div>
 
       <div className="w-full">
+        {/* ===== ORGANISATION ===== */}
+        {tab === "organisation" && currentOrg && (
+          <div className="space-y-6 max-w-md">
+            <div className="rounded-xl border border-stroke p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <Buildings size={20} className="text-muted-foreground" />
+                <div className="flex-1">
+                  {isEditingOrg ? (
+                    <div className="flex gap-2">
+                      <input value={editOrgName} onChange={e => setEditOrgName(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") handleSaveOrgName(); if (e.key === "Escape") setIsEditingOrg(false); }}
+                        autoFocus className="flex-1 rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                      <button onClick={handleSaveOrgName} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background">Save</button>
+                      <button onClick={() => setIsEditingOrg(false)} className="text-sm text-muted-foreground">Cancel</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold">{currentOrg.name}</p>
+                      <button onClick={() => { setEditOrgName(currentOrg.name); setIsEditingOrg(true); }}
+                        className="text-muted-foreground hover:text-foreground"><PencilSimple size={14} /></button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-destructive/30 p-5 space-y-3">
+              <h3 className="text-sm font-semibold text-destructive">Danger Zone</h3>
+              <p className="text-sm text-muted-foreground">Deleting this organisation will permanently remove all events, tasks, departments, billing, and documents.</p>
+              <button onClick={() => setShowDeleteOrg(true)}
+                className="rounded-full bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors">
+                Delete Organisation
+              </button>
+            </div>
+
+            {showDeleteOrg && (
+              <>
+                <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowDeleteOrg(false)} />
+                <div className="fixed inset-0 z-[61] flex items-center justify-center">
+                  <div className="bg-card rounded-xl border border-stroke p-6 w-full max-w-sm shadow-lg space-y-4">
+                    <h3 className="text-base font-semibold">Delete "{currentOrg.name}"?</h3>
+                    <p className="text-sm text-muted-foreground">Type <span className="font-semibold text-foreground">{currentOrg.name}</span> to confirm deletion.</p>
+                    <input value={deleteOrgConfirmName} onChange={e => setDeleteOrgConfirmName(e.target.value)}
+                      placeholder={currentOrg.name} className="w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => { setShowDeleteOrg(false); setDeleteOrgConfirmName(""); }}
+                        className="rounded-full bg-secondary px-4 py-2 text-sm font-medium">Cancel</button>
+                      <button onClick={handleDeleteOrg} disabled={deleteOrgConfirmName !== currentOrg.name}
+                        className="rounded-full bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground disabled:opacity-40 transition-colors">Delete</button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* ===== PERMISSIONS ===== */}
         {tab === "permissions" && (
           <div className="space-y-6">
