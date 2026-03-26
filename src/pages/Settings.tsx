@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMockData } from "@/context/MockDataContext";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Check, X, Shield, Plus, Trash } from "@phosphor-icons/react";
+import { Check, X, Shield, Plus, Trash, Buildings, PencilSimple } from "@phosphor-icons/react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
 
 const roleLabels: Record<string, string> = {
   sa: "Super Admin", org: "Organiser", dept_head: "Dept Head", dept_member: "Member",
