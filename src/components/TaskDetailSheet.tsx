@@ -76,6 +76,27 @@ export function TaskDetailSheet({ taskId, onClose, onOpenProfile }: TaskDetailSh
     departments,
   } = useMockData();
 
+  const renderCommentBody = (body: string) => {
+    // Split on @Name patterns
+    const regex = /@([\w\s]+?)(?=\s@|$|\s{2}|[.,!?])/g;
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = regex.exec(body)) !== null) {
+      if (match.index > lastIndex) {
+        elements.push(body.slice(lastIndex, match.index));
+      }
+      elements.push(
+        <MentionName key={match.index} name={match[1].trim()} profiles={profiles} onOpenProfile={onOpenProfile} />
+      );
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < body.length) {
+      elements.push(body.slice(lastIndex));
+    }
+    return elements.length > 0 ? elements : body;
+  };
+
   const [newComment, setNewComment] = useState("");
   const [editingComment, setEditingComment] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
