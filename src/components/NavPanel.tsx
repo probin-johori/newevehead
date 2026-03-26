@@ -158,12 +158,17 @@ export function NavPanel() {
                       </NavLink>
                     );
                   })}
-                  {events.length > 4 && (
+                  {activeEvents.length > 4 && (
                     <button onClick={() => setShowAllEvents(!showAllEvents)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                       <DotsThreeOutline size={12} weight="fill" />
                       {showAllEvents ? "Show less" : "More"}
                     </button>
+                  )}
+                  {events.some(e => e.status === "completed" || e.status === "archived") && (
+                    <NavLink to="/past-events" className={navItemInactive}>
+                      <span className="text-xs">📁</span> Past Events
+                    </NavLink>
                   )}
                 </div>
               </div>
