@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 
 export function AppHeader() {
-  const { profile, user, signOut } = useAuth();
+  const { profile, user, signOut, orgName } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -48,20 +48,25 @@ export function AppHeader() {
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b px-6">
-      {/* Search */}
-      <div className="relative flex-1 max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input className="h-9 rounded-full bg-muted pl-9 text-sm" placeholder="Search..." />
+      {/* Org name */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold">{orgName}</span>
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
+      {/* Search - centered */}
+      <div className="relative ml-auto max-w-sm flex-1">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input className="h-9 rounded-full bg-muted pl-9 text-sm" placeholder="Search events, tasks, people..." />
+      </div>
+
+      <div className="ml-auto flex items-center gap-2">
         {/* Notifications */}
         <Sheet open={showNotifs} onOpenChange={setShowNotifs}>
           <SheetTrigger asChild>
             <button className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-accent">
               <Bell size={18} />
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
