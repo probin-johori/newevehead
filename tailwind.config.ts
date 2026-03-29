@@ -57,6 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "nav-panel": "hsl(var(--nav-panel))",
+        "page-bg": "hsl(var(--page-bg))",
+        selected: "hsl(var(--selected))",
+        "icon-btn": {
+          DEFAULT: "hsl(var(--icon-btn))",
+          foreground: "hsl(var(--icon-btn-fg))",
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        info: "hsl(var(--info))",
       },
       borderRadius: {
         lg: "var(--radius)",
