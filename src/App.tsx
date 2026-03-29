@@ -5,7 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
+import AppLayout from "@/components/layout/AppLayout";
+import Dashboard from "@/pages/Dashboard";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -21,13 +22,14 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
-              path="/"
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <AppLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route path="/" element={<Dashboard />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
