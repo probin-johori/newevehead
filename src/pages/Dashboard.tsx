@@ -1,181 +1,169 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMockData, formatINRShort, formatDate } from "@/context/MockDataContext";
-import { StatusBadge } from "@/components/StatusBadge";
-import { UserAvatar } from "@/components/UserAvatar";
-import { X, Hash, Plus } from "@phosphor-icons/react";
-import { toast } from "@/hooks/use-toast";
-import { useScrollLock } from "@/hooks/useScrollLock";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { AppShell } from "@/components/layout/AppShell";
+import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  DollarSign, TrendingUp, Clock, Wallet, CheckCircle2,
+  AlertTriangle, Calendar, Users,
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-export default function DashboardPage() {
+export default function Dashboard() {
+  const { orgId, user } = useAuth();
   const navigate = useNavigate();
-  const { events, departments, tasks, bills, getProfile, getDepartment, getEvent, getTasksByEvent } = useMockData();
-  const [deptFilter, setDeptFilter] = useState<string | null>(null);
-  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [filterEvent, setFilterEvent] = useState<string>("all");
 
-  useScrollLock(showAddEvent);
+  useEffect(() => {
+    if (!orgId) return;
+    supabase.from("events").select("*").eq("org_id", orgId).then(({ data }) => setEvents(data || []));
+    supabase.from("team_members").select("*").eq("org_id", orgId).then(({ data }) => setTeamMembers(data || []));
+  }, [orgId]);
 
-  const allDeptNames = Array.from(new Set(departments.map(d => d.name)));
-  const filteredDepts = deptFilter ? departments.filter(d => d.name === deptFilter) : departments;
-  const filteredDeptIds = new Set(filteredDepts.map(d => d.id));
-  const filteredEventIds = new Set(filteredDepts.map(d => d.event_id));
-  const filteredEvents = deptFilter ? events.filter(e => filteredEventIds.has(e.id)) : events;
-  const filteredTasks = deptFilter ? tasks.filter(t => filteredDeptIds.has(t.dept_id)) : tasks;
+  useEffect(() => {
+    if (!orgId) return;
+    const eventIds = events.map(e => e.id);
+    if (eventIds.length === 0) return;
 
-  const totalBudget = filteredEvents.reduce((s, e) => s + e.estimated_budget, 0);
-  const totalSpent = filteredDepts.reduce((s, d) => s + d.spent, 0);
-  const tasksDone = filteredTasks.filter(t => t.status === "completed").length;
-  const overdueTasks = filteredTasks.filter(t => t.status !== "completed" && new Date(t.deadline) < new Date()).length;
+    const filteredIds = filterEvent === "all" ? eventIds : [filterEvent];
+    supabase.from("tasks").select("*").in("event_id", filteredIds).then(({ data }) => setTasks(data || []));
+    supabase.from("bills").select("*").in("event_id", filteredIds).then(({ data }) => setBills(data || []));
+    supabase.from("departments").select("*").in("event_id", filteredIds).then(({ data }) => setDepartments(data || []));
+  }, [events, filterEvent, orgId]);
+
+  const activeEvents = events.filter(e => e.status === "planning" || e.status === "active");
+  const totalBudget = (filterEvent === "all" ? events : events.filter(e => e.id === filterEvent)).reduce((s, e) => s + (e.estimated_budget || 0), 0);
+  const approvedSpend = bills.filter(b => b.status === "approved" || b.status === "paid").reduce((s, b) => s + b.amount, 0);
+  const pendingSpend = bills.filter(b => b.status === "pending").reduce((s, b) => s + b.amount, 0);
+  const allocatedBudget = departments.reduce((s, d) => s + (d.allocated_budget || 0), 0);
+  const completedTasks = tasks.filter(t => t.status === "completed" || t.status === "done").length;
+  const overdueTasks = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== "completed" && t.status !== "done").length;
+
+  const stats = [
+    { label: "Total Budget", value: `₹${totalBudget.toLocaleString()}`, icon: DollarSign, color: "text-emerald-600" },
+    { label: "Approved Spend", value: `₹${approvedSpend.toLocaleString()}`, icon: TrendingUp, color: "text-blue-600" },
+    { label: "Pending Spend", value: `₹${pendingSpend.toLocaleString()}`, icon: Clock, color: "text-amber-600" },
+    { label: "Allocated Budget", value: `₹${allocatedBudget.toLocaleString()}`, icon: Wallet, color: "text-purple-600" },
+  ];
+
+  const stats2 = [
+    { label: "Tasks Completed", value: `${completedTasks}/${tasks.length}`, icon: CheckCircle2, color: "text-emerald-600" },
+    { label: "Overdue Tasks", value: overdueTasks.toString(), icon: AlertTriangle, color: "text-red-600" },
+    { label: "Active Events", value: activeEvents.length.toString(), icon: Calendar, color: "text-blue-600" },
+    { label: "Team Members", value: teamMembers.length.toString(), icon: Users, color: "text-purple-600" },
+  ];
+
+  const recentTasks = tasks.slice(0, 8);
+
+  const statusColor = (s: string) => {
+    if (s === "completed" || s === "done") return "bg-emerald-500";
+    if (s === "in-progress") return "bg-blue-500";
+    if (s === "overdue" || (s !== "completed" && s !== "done")) return "bg-amber-500";
+    return "bg-muted-foreground";
+  };
 
   return (
-    <div className="p-6 w-full">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Overview across all events</p>
+    <AppShell>
+      <div className="space-y-6">
+        {/* Header with filter */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <Select value={filterEvent} onValueChange={setFilterEvent}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All Events" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Events</SelectItem>
+              {events.map(e => (
+                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <button onClick={() => setShowAddEvent(true)}
-          className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-          <Plus size={14} /> Add Event
-        </button>
-      </div>
 
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">Department:</span>
-        <button onClick={() => setDeptFilter(null)}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${!deptFilter ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
-          All
-        </button>
-        {allDeptNames.map(name => (
-          <button key={name} onClick={() => deptFilter === name ? setDeptFilter(null) : navigate(`/departments/${encodeURIComponent(name)}`)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors flex items-center gap-1 ${deptFilter === name ? "bg-foreground text-background" : "bg-secondary text-muted-foreground hover:bg-selected"}`}>
-            <Hash size={10} />{name}
-          </button>
-        ))}
-        {deptFilter && (
-          <button onClick={() => setDeptFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-1">
-            <X size={12} /> Clear
-          </button>
-        )}
-      </div>
+        {/* KPI Cards in single container */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-4 gap-4">
+              {stats.map(s => (
+                <div key={s.label} className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-muted ${s.color}`}>
+                    <s.icon size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                    <p className="text-lg font-semibold">{s.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-4 gap-4">
+              {stats2.map(s => (
+                <div key={s.label} className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-muted ${s.color}`}>
+                    <s.icon size={20} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                    <p className="text-lg font-semibold">{s.value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-      <div className="grid grid-cols-4 gap-0 border border-stroke rounded-xl overflow-hidden mb-6">
-        {[
-          { label: "Total Budget", value: formatINRShort(totalBudget) },
-          { label: "Total Spent", value: formatINRShort(totalSpent) },
-          { label: "Tasks Completed", value: `${tasksDone}/${filteredTasks.length}` },
-          { label: "Overdue Tasks", value: String(overdueTasks) },
-        ].map((stat, i) => (
-          <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
-            <p className="text-sm text-muted-foreground">{stat.label}</p>
-            <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      <h3 className="text-sm font-semibold mb-3">Events{deptFilter ? ` — ${deptFilter}` : ""}</h3>
-      <div className="rounded-xl border border-stroke overflow-hidden mb-6">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-stroke">
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
-              <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Tasks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredEvents.map(ev => {
-              const evTasks = getTasksByEvent(ev.id);
-              const done = evTasks.filter(t => t.status === "completed").length;
-              return (
-                <tr key={ev.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors" onClick={() => navigate(`/events/${ev.id}`)}>
-                  <td className="px-4 py-3 font-medium">{ev.name}</td>
-                  <td className="px-4 py-3"><StatusBadge status={ev.status} /></td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(ev.start_date)} – {formatDate(ev.end_date)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatINRShort(ev.estimated_budget)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{done}/{evTasks.length}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <h3 className="text-sm font-semibold mb-3">Recent Tasks{deptFilter ? ` — ${deptFilter}` : ""}</h3>
-      <div className="rounded-xl border border-stroke overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-stroke">
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assignee</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Due</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTasks.slice(0, 5).map(t => {
-              const ev = getEvent(t.event_id);
-              const assignee = getProfile(t.assignee_id);
-              const overdue = t.status !== "completed" && new Date(t.deadline) < new Date();
-              return (
-                <tr key={t.id} className="border-b border-stroke last:border-0 cursor-pointer hover:bg-selected transition-colors" onClick={() => navigate(`/tasks?task=${t.id}`)}>
-                  <td className="px-4 py-3 font-medium">{t.title}</td>
-                  <td className="px-4 py-3">
-                    <button className="text-muted-foreground hover:text-accent text-sm" onClick={e => { e.stopPropagation(); navigate(`/events/${t.event_id}`); }}>{ev?.name}</button>
-                  </td>
-                  <td className="px-4 py-3">{assignee && <div className="flex items-center gap-1.5"><UserAvatar name={assignee.name} color={assignee.avatar_color} size="sm" /><span>{assignee.name}</span></div>}</td>
-                  <td className="px-4 py-3"><StatusBadge status={t.status} /></td>
-                  <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>{formatDate(t.deadline)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {showAddEvent && (
-        <>
-          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddEvent(false)} />
-          <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
-            <div className="w-full max-w-lg rounded-xl bg-card border border-stroke p-6 shadow-[0_8px_40px_rgba(0,0,0,0.15)] space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Add Event</h3>
-                <button onClick={() => setShowAddEvent(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="text-sm font-medium">Event Name</label>
-                  <input className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Annual Gala 2026" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium">Location</label>
-                  <input className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Venue name and city" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Start Date</label>
-                  <input type="date" className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">End Date</label>
-                  <input type="date" className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Estimated Budget (₹)</label>
-                  <input type="number" className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="0" />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowAddEvent(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
-                <button onClick={() => { setShowAddEvent(false); toast({ title: "Event created" }); }}
-                  className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Save</button>
-              </div>
+        <div className="grid grid-cols-3 gap-6">
+          {/* Active Events */}
+          <div className="col-span-2">
+            <h2 className="mb-3 text-lg font-semibold">Active Events</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {activeEvents.length === 0 && <p className="col-span-2 text-sm text-muted-foreground">No active events</p>}
+              {activeEvents.map(event => (
+                <Card key={event.id} className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => navigate(`/events/${event.id}`)}>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold">{event.name}</h3>
+                    <p className="text-xs text-muted-foreground">{event.location}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${event.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}>
+                        {event.status}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
-        </>
-      )}
-    </div>
+
+          {/* Recent Tasks - notification style */}
+          <div>
+            <h2 className="mb-3 text-lg font-semibold">Recent Tasks</h2>
+            <div className="space-y-1">
+              {recentTasks.length === 0 && <p className="text-sm text-muted-foreground">No tasks yet</p>}
+              {recentTasks.map(task => (
+                <div key={task.id} className="flex items-start gap-2.5 rounded-lg px-3 py-2 hover:bg-accent/50 cursor-pointer">
+                  <div className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${statusColor(task.status)}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{task.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {task.deadline ? `Due ${formatDistanceToNow(new Date(task.deadline), { addSuffix: true })}` : "No deadline"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
   );
 }

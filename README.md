@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Welcome to the real Evehead project
 
 TODO: Document your project here

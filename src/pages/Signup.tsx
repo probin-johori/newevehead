@@ -1,55 +1,78 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useMockData } from "@/context/MockDataContext";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
-export default function SignupPage() {
+export default function Signup() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const { signup } = useMockData();
+  const [orgName, setOrgName] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const redirect = params.get("redirect") || "/dashboard";
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !password) { setError("All fields are required"); return; }
-    if (password.length < 6) { setError("Password must be at least 6 characters"); return; }
-    signup(name, email, password);
-    navigate("/onboarding/role");
+    if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email, password,
+      options: {
+        data: { name, org_name: orgName },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Check your email to verify your account.");
+      navigate("/login");
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-rose-400 to-rose-500 text-lg font-bold text-white">ZH</div>
-          <h1 className="text-2xl font-semibold">Create your account</h1>
-          <p className="text-sm text-muted-foreground mt-1">Get started with Zero Hour Events</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-stroke bg-card p-6">
-          {error && <p className="text-sm text-destructive">{error}</p>}
+    <div className="flex min-h-screen items-center justify-center bg-muted/40">
+      <div className="w-full max-w-md rounded-xl border bg-card p-8 shadow-sm">
+        <h1 className="mb-1 text-2xl font-bold">Create an account</h1>
+        <p className="mb-6 text-sm text-muted-foreground">Get started with your organisation</p>
+        <form onSubmit={handleSignup} className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Full Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="John Doe" />
+            <Label htmlFor="name">Full Name</Label>
+            <Input id="name" value={name} onChange={e => setName(e.target.value)} required placeholder="John Doe" />
           </div>
           <div>
-            <label className="text-sm font-medium">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="you@example.com" />
+            <Label htmlFor="orgName">Organisation Name</Label>
+            <Input id="orgName" value={orgName} onChange={e => setOrgName(e.target.value)} required placeholder="My Organisation" />
           </div>
           <div>
-            <label className="text-sm font-medium">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="••••••••" />
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" />
           </div>
-          <button type="submit" className="w-full rounded-full bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
-            Create Account
-          </button>
-          <p className="text-center text-sm text-muted-foreground">
-            Already have an account? <Link to="/login" className="text-accent hover:underline">Sign in</Link>
-          </p>
+          <div>
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input id="password" type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
+              <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" onClick={() => setShowPw(!showPw)}>
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Creating account..." : "Sign up"}
+          </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link to={`/login${redirect !== "/dashboard" ? `?redirect=${redirect}` : ""}`} className="font-medium text-foreground hover:underline">Sign in</Link>
+        </p>
       </div>
     </div>
   );
