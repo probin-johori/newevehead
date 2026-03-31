@@ -1,266 +1,295 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { AppShell } from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  BarChart3, ClipboardList, FileText as FileIcon, TrendingUp,
-  Plus, ChevronDown,
-} from "lucide-react";
-import { format } from "date-fns";
-import { toast } from "sonner";
+import { useMockData, formatINRShort, formatDate, formatTimeAgo } from "@/context/MockDataContext";
+import { StatusBadge } from "@/components/StatusBadge";
+import { X, Plus, CaretDown, ListChecks, Receipt, Users, CalendarBlank, ChartBar } from "@phosphor-icons/react";
+import { toast } from "@/hooks/use-toast";
+import { useScrollLock } from "@/hooks/useScrollLock";
+import { EventImageUpload } from "@/components/EventImageUpload";
+import { UserAvatar } from "@/components/UserAvatar";
 
-function formatIndian(n: number): string {
-  if (n >= 10000000) return `₹${(n / 10000000).toFixed(n % 10000000 === 0 ? 0 : 1)}Cr`;
-  if (n >= 100000) return `₹${(n / 100000).toFixed(n % 100000 === 0 ? 0 : 1)}L`;
-  if (n >= 1000) return `₹${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`;
-  return `₹${n}`;
-}
-
-export default function Dashboard() {
-  const { orgId, user } = useAuth();
+export default function DashboardPage() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [bills, setBills] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [filterEvent, setFilterEvent] = useState<string>("all");
-  const [showAllEvents, setShowAllEvents] = useState(false);
+  const { events, departments, tasks, bills, getTasksByEvent, currentUser, addEvent: dbAddEvent, orgId, getProfile, teamMembers } = useMockData();
+  const [eventFilter, setEventFilter] = useState<string | null>(null);
+  const [showEventDropdown, setShowEventDropdown] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEventName, setNewEventName] = useState("");
-  const [newEventLocation, setNewEventLocation] = useState("");
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
 
-  useEffect(() => {
-    if (!orgId) return;
-    supabase.from("events").select("*").eq("org_id", orgId).order("start_date", { ascending: true })
-      .then(({ data }) => setEvents(data || []));
-    supabase.from("team_members").select("*").eq("org_id", orgId)
-      .then(({ data }) => setTeamMembers(data || []));
-  }, [orgId]);
+  useScrollLock(showAddEvent);
 
-  useEffect(() => {
-    if (!orgId) return;
-    const eventIds = events.map(e => e.id);
-    if (eventIds.length === 0) { setTasks([]); setBills([]); setDepartments([]); return; }
-    const filteredIds = filterEvent === "all" ? eventIds : [filterEvent];
-    supabase.from("tasks").select("*").in("event_id", filteredIds).then(({ data }) => setTasks(data || []));
-    supabase.from("bills").select("*").in("event_id", filteredIds).then(({ data }) => setBills(data || []));
-    supabase.from("departments").select("*").in("event_id", filteredIds).then(({ data }) => setDepartments(data || []));
-  }, [events, filterEvent, orgId]);
+  // Only show active/planning events on dashboard
+  const activeEvents2 = events.filter(e => e.status === "planning" || e.status === "active");
+  const pastEvents = events.filter(e => e.status === "completed" || e.status === "archived");
+  const displayEvents = activeEvents2;
 
-  const activeEvents = events.filter(e => e.status === "planning" || e.status === "active");
-  const displayEvents = showAllEvents ? events : activeEvents;
+  // Stats — scoped to event filter
+  const statsEvents = eventFilter ? events.filter(e => e.id === eventFilter) : events;
+  const statsEventIds = new Set(statsEvents.map(e => e.id));
+  const statsDepts = departments.filter(d => statsEventIds.has(d.event_id));
+  const statsTasks = tasks.filter(t => statsEventIds.has(t.event_id));
+  const statsBills = bills.filter(b => statsEventIds.has(b.event_id));
 
-  // Stats scoped to filter
-  const scopedEvents = filterEvent === "all" ? events : events.filter(e => e.id === filterEvent);
-  const totalBudget = scopedEvents.reduce((s, e) => s + (e.estimated_budget || 0), 0);
-  const approvedSpend = bills.filter(b => b.status === "approved" || b.status === "paid").reduce((s, b) => s + b.amount, 0);
-  const pendingSpend = bills.filter(b => b.status === "pending").reduce((s, b) => s + b.amount, 0);
-  const allocatedBudget = departments.reduce((s, d) => s + (d.allocated_budget || 0), 0);
-  const completedTasks = tasks.filter(t => t.status === "completed" || t.status === "done").length;
-  const overdueTasks = tasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== "completed" && t.status !== "done").length;
+  const totalBudget = statsEvents.reduce((s, e) => s + e.estimated_budget, 0);
+  const totalSpent = statsBills.filter(b => b.status === "settled").reduce((s, b) => s + b.amount, 0);
+  const pendingSpend = statsBills.filter(b => ["pending", "dept-verified", "ca-approved"].includes(b.status)).reduce((s, b) => s + b.amount, 0);
+  const allocatedBudget = statsDepts.reduce((s, d) => s + d.allocated_budget, 0);
+  const tasksDone = statsTasks.filter(t => t.status === "completed").length;
+  const tasksTotal = statsTasks.length;
+  const overdueTasks = statsTasks.filter(t => t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date()).length;
+  const activeEvents = statsEvents.filter(e => e.status === "active" || e.status === "planning").length;
+  const teamSize = teamMembers.length;
 
-  const myTasks = tasks.filter(t => t.assignee_id === user?.id).slice(0, 10);
-
-  const statusBadge = (s: string) => {
-    if (s === "completed" || s === "done") return { label: "Done", cls: "bg-emerald-100 text-emerald-700" };
-    if (s === "in-progress") return { label: "In Progress", cls: "bg-orange-100 text-orange-700" };
-    return { label: "Not Started", cls: "bg-muted text-muted-foreground" };
-  };
-
-  const eventStatusBadge = (s: string) => {
-    if (s === "active") return "text-emerald-600";
-    if (s === "planning") return "text-blue-600";
-    return "text-muted-foreground";
-  };
+  // Recent tasks assigned to current user
+  const myRecentTasks = tasks
+    .filter(t => t.assignee_id === currentUser.id)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
 
   const handleAddEvent = async () => {
-    if (!newEventName.trim() || !orgId || !user) return;
-    const { error } = await supabase.from("events").insert({
-      name: newEventName.trim(), location: newEventLocation.trim(),
-      org_id: orgId, created_by: user.id,
+    if (!addForm.name.trim()) { toast({ title: "Event name is required", variant: "destructive" }); return; }
+    const newEvent = await dbAddEvent({
+      name: addForm.name.trim(), location: addForm.location,
+      start_date: addForm.start_date || new Date().toISOString().split("T")[0],
+      end_date: addForm.end_date || new Date().toISOString().split("T")[0],
+      setup_date: addForm.start_date || new Date().toISOString().split("T")[0],
+      teardown_date: addForm.end_date || new Date().toISOString().split("T")[0],
+      estimated_budget: Number(addForm.estimated_budget) || 0,
+      status: "planning" as const, poc_id: currentUser.id, created_by: currentUser.id,
+      image_url: addForm.image_url || undefined,
     });
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Event created");
-      setShowAddEvent(false); setNewEventName(""); setNewEventLocation("");
-      supabase.from("events").select("*").eq("org_id", orgId).order("start_date", { ascending: true })
-        .then(({ data }) => setEvents(data || []));
-    }
+    setShowAddEvent(false);
+    setAddForm({ name: "", location: "", start_date: "", end_date: "", estimated_budget: "", image_url: "" });
+    toast({ title: "Event created" });
+    if (newEvent) navigate(`/events/${newEvent.id}`);
   };
 
   return (
-    <AppShell>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Overview across all events</p>
-          </div>
-          <Button onClick={() => setShowAddEvent(true)} className="rounded-full gap-1.5">
-            <Plus size={16} />
-            Add Event
-          </Button>
-        </div>
-
-        {/* Event filter dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="rounded-full gap-1.5 h-9 px-4 text-sm">
-              {filterEvent === "all" ? "All Events" : events.find(e => e.id === filterEvent)?.name || "All Events"}
-              <ChevronDown size={14} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => setFilterEvent("all")}>All Events</DropdownMenuItem>
-            {events.map(e => (
-              <DropdownMenuItem key={e.id} onClick={() => setFilterEvent(e.id)}>{e.name}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {/* KPI Cards - single container, 2 rows */}
-        <Card className="border">
-          <CardContent className="p-5">
-            <div className="grid grid-cols-4 gap-6">
-              {[
-                { icon: BarChart3, label: "Total Budget", value: formatIndian(totalBudget), color: "text-foreground" },
-                { icon: ClipboardList, label: "Approved Spend", value: formatIndian(approvedSpend), color: "text-foreground" },
-                { icon: FileIcon, label: "Pending Spend", value: formatIndian(pendingSpend), color: "text-foreground" },
-                { icon: TrendingUp, label: "Allocated Budget", value: formatIndian(allocatedBudget), color: "text-foreground" },
-              ].map(s => (
-                <div key={s.label} className="space-y-1">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <s.icon size={14} />
-                    <span className="text-xs">{s.label}</span>
-                  </div>
-                  <p className="text-2xl font-bold tracking-tight">{s.value}</p>
-                </div>
-              ))}
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-4 gap-6">
-              {[
-                { label: "Tasks Completed", value: `${completedTasks}/${tasks.length}` },
-                { label: "Overdue Tasks", value: overdueTasks.toString() },
-                { label: "Active Events", value: activeEvents.length.toString() },
-                { label: "Team Members", value: teamMembers.length.toString() },
-              ].map(s => (
-                <div key={s.label} className="space-y-1">
-                  <p className="text-xs text-muted-foreground">{s.label}</p>
-                  <p className="text-2xl font-bold tracking-tight">{s.value}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Events section */}
+    <div className="p-6 w-full">
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Events</h2>
-            <button
-              onClick={() => setShowAllEvents(!showAllEvents)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {showAllEvents ? `Active Events (${activeEvents.length})` : `All Events (${events.length})`}
-            </button>
-          </div>
-          <div className="flex gap-8 overflow-x-auto pb-2">
-            {displayEvents.length === 0 && (
-              <p className="text-sm text-muted-foreground">No events yet</p>
-            )}
-            {displayEvents.map(event => (
-              <button
-                key={event.id}
-                onClick={() => navigate(`/events/${event.id}`)}
-                className="flex flex-col items-center gap-2 min-w-[120px] group"
-              >
-                {/* Circular thumbnail */}
-                <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-border group-hover:border-foreground transition-colors">
-                  {event.image_url ? (
-                    <img src={event.image_url} alt={event.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full bg-muted flex items-center justify-center text-xl font-bold text-muted-foreground">
-                      {event.name?.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium leading-tight">{event.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {event.start_date && event.end_date
-                      ? `${format(new Date(event.start_date), "MMM d")} – ${format(new Date(event.end_date), "MMM d")}`
-                      : "No dates"}
-                  </p>
-                  <p className={`text-xs font-medium capitalize ${eventStatusBadge(event.status)}`}>
-                    {event.status}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
+          <h1 className="text-xl font-semibold">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Overview across all events</p>
         </div>
+        <button onClick={() => setShowAddEvent(true)}
+          className="flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90 transition-colors">
+          <Plus size={14} /> Add Event
+        </button>
+      </div>
 
-        {/* My Tasks - notification style */}
-        <div>
-          <h2 className="text-lg font-semibold mb-3">My Tasks</h2>
-          <div className="space-y-0.5">
-            {myTasks.length === 0 && <p className="text-sm text-muted-foreground py-4">No tasks assigned to you</p>}
-            {myTasks.map(task => {
-              const badge = statusBadge(task.status);
-              const eventName = events.find(e => e.id === task.event_id)?.name || "";
-              return (
-                <div
-                  key={task.id}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 hover:bg-accent/50 cursor-pointer transition-colors border-b border-border last:border-0"
-                >
-                  {/* Status dot */}
-                  <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                    task.status === "in-progress" ? "bg-destructive" :
-                    task.status === "completed" || task.status === "done" ? "bg-emerald-500" :
-                    "bg-muted-foreground/40"
-                  }`} />
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{task.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {eventName}{task.deadline ? ` · Due ${format(new Date(task.deadline), "MMM d")}` : ""}
-                    </p>
-                  </div>
-                  {/* Status badge */}
-                  <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${badge.cls}`}>
-                    {badge.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      {/* Event Filter — scoped to stats only */}
+      <div className="flex items-center gap-2 mb-5">
+        <div className="relative">
+          <button onClick={() => setShowEventDropdown(!showEventDropdown)}
+            className="flex items-center gap-1.5 rounded-full border border-stroke bg-secondary px-3 py-1.5 text-sm font-medium hover:bg-selected transition-colors">
+            {eventFilter ? events.find(e => e.id === eventFilter)?.name || "Event" : "All Events"}
+            <CaretDown size={12} />
+          </button>
+          {showEventDropdown && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowEventDropdown(false)} />
+              <div className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-stroke bg-card shadow-lg z-20 py-1 max-h-60 overflow-y-auto">
+                <button onClick={() => { setEventFilter(null); setShowEventDropdown(false); }}
+                  className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${!eventFilter ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                  All Events
+                </button>
+                {events.map(ev => (
+                  <button key={ev.id} onClick={() => { setEventFilter(ev.id); setShowEventDropdown(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-selected transition-colors ${eventFilter === ev.id ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                    {ev.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {eventFilter && (
+          <button onClick={() => setEventFilter(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <X size={12} /> Clear
+          </button>
+        )}
+      </div>
+
+      {/* KPI Cards — single container, two rows */}
+      <div className="border border-stroke rounded-xl overflow-hidden mb-6">
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Total Budget", value: formatINRShort(totalBudget), icon: <ChartBar size={16} className="text-muted-foreground" /> },
+            { label: "Approved Spend", value: formatINRShort(totalSpent), icon: <Receipt size={16} className="text-emerald-500" /> },
+            { label: "Pending Spend", value: formatINRShort(pendingSpend), icon: <Receipt size={16} className="text-amber-500" /> },
+            { label: "Allocated Budget", value: formatINRShort(allocatedBudget), icon: <ChartBar size={16} className="text-accent" /> },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <div className="flex items-center gap-1.5 mb-1">
+                {stat.icon}
+                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              </div>
+              <p className="text-2xl font-semibold tabular-nums">{stat.value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-stroke" />
+        <div className="grid grid-cols-4 gap-0">
+          {[
+            { label: "Tasks Completed", value: `${tasksDone}/${tasksTotal}` },
+            { label: "Overdue Tasks", value: String(overdueTasks) },
+            { label: "Active Events", value: String(activeEvents) },
+            { label: "Team Members", value: String(teamSize) },
+          ].map((stat, i) => (
+            <div key={i} className={`p-5 ${i < 3 ? "border-r border-stroke" : ""}`}>
+              <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <p className="text-2xl font-semibold mt-1 tabular-nums">{stat.value}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Add Event Dialog */}
-      <Dialog open={showAddEvent} onOpenChange={setShowAddEvent}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Create Event</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div><Label>Event Name</Label><Input value={newEventName} onChange={e => setNewEventName(e.target.value)} placeholder="Annual Gala" /></div>
-            <div><Label>Location</Label><Input value={newEventLocation} onChange={e => setNewEventLocation(e.target.value)} placeholder="Convention Center" /></div>
-            <Button onClick={handleAddEvent} className="w-full">Create</Button>
+      {/* Events Header */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold">Events</h3>
+        {pastEvents.length > 0 && (
+          <button onClick={() => navigate("/past-events")}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            All Events ({events.length})
+          </button>
+        )}
+      </div>
+
+      {displayEvents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-stroke">
+          <span className="text-3xl mb-3">🎉</span>
+          <p className="text-sm font-medium mb-1">No events yet</p>
+          <p className="text-sm text-muted-foreground mb-4">Create your first event to get started.</p>
+          <button onClick={() => setShowAddEvent(true)} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">
+            <Plus size={14} className="inline mr-1" /> Add Event
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+          {displayEvents.map(ev => {
+            const evTasks = getTasksByEvent(ev.id);
+            const done = evTasks.filter(t => t.status === "completed").length;
+            const initials = ev.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+            return (
+              <button key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}
+                className="flex flex-col items-center text-center group">
+                <div className="w-20 h-20 rounded-full overflow-hidden mb-3 ring-2 ring-stroke group-hover:ring-foreground/30 transition-all">
+                  {ev.image_url ? (
+                    <img src={ev.image_url} alt={ev.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-lg font-bold">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+                <p className="font-medium text-sm truncate max-w-full">{ev.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(ev.start_date)} – {formatDate(ev.end_date)}</p>
+                <StatusBadge status={ev.status} className="mt-1" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Recent Tasks — notification-style list */}
+      {myRecentTasks.length > 0 && (
+        <>
+          <h3 className="text-sm font-semibold mb-3">My Tasks</h3>
+          <div className="rounded-xl border border-stroke overflow-hidden divide-y divide-stroke">
+            {myRecentTasks.map(t => {
+              const ev = events.find(e => e.id === t.event_id);
+              const overdue = t.status !== "completed" && t.deadline && new Date(t.deadline) < new Date();
+              return (
+                <button key={t.id}
+                  onClick={() => navigate(`/events/${t.event_id}?tab=tasks&task=${t.id}`)}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-selected transition-colors">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${t.status === "completed" ? "bg-emerald-500" : overdue ? "bg-red-500" : t.status === "in-progress" ? "bg-amber-500" : "bg-muted-foreground/30"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {ev?.name}{t.deadline ? ` · Due ${formatDate(t.deadline)}` : ""}
+                    </p>
+                  </div>
+                  <StatusBadge status={t.status} />
+                </button>
+              );
+            })}
           </div>
-        </DialogContent>
-      </Dialog>
-    </AppShell>
+        </>
+      )}
+
+      {/* Add Event Sidesheet */}
+      {showAddEvent && (
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/40" onClick={() => setShowAddEvent(false)} />
+          <div className="fixed right-0 top-0 z-[61] h-full w-full max-w-lg overflow-y-auto bg-card border-l border-stroke shadow-[0_8px_40px_rgba(0,0,0,0.12)]"
+            onKeyDown={e => e.key === "Escape" && setShowAddEvent(false)}>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Create Event</h3>
+                <button onClick={() => setShowAddEvent(false)} className="text-muted-foreground hover:text-foreground"><X size={20} /></button>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Event Thumbnail</label>
+                {addForm.image_url ? (
+                  <div className="relative mt-2 w-32 h-32 rounded-xl overflow-hidden group">
+                    <img src={addForm.image_url} alt="" className="w-full h-full object-cover" />
+                    <button onClick={() => setShowImageUpload(true)}
+                      className="absolute bottom-2 right-2 rounded-full bg-black/60 px-3 py-1 text-xs text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">Change</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowImageUpload(true)}
+                    className="mt-2 flex flex-col items-center justify-center w-32 h-32 border-2 border-dashed border-stroke rounded-xl bg-secondary hover:bg-selected transition-colors cursor-pointer">
+                    <p className="text-sm font-medium">Add</p>
+                    <p className="text-xs text-muted-foreground">thumbnail</p>
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Event Name <span className="text-red-500">*</span></label>
+                <input value={addForm.name} onChange={e => setAddForm(f => ({ ...f, name: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="e.g. Annual Gala 2026" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Location</label>
+                <input value={addForm.location} onChange={e => setAddForm(f => ({ ...f, location: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="Venue name and city" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Start Date</label>
+                  <input type="date" value={addForm.start_date} onChange={e => setAddForm(f => ({ ...f, start_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">End Date</label>
+                  <input type="date" value={addForm.end_date} onChange={e => setAddForm(f => ({ ...f, end_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Estimated Budget (₹)</label>
+                <input type="number" value={addForm.estimated_budget} onChange={e => setAddForm(f => ({ ...f, estimated_budget: e.target.value }))}
+                  className="mt-1 block w-full rounded-lg border border-stroke bg-secondary px-3 py-2 text-sm focus:outline-none" placeholder="0" />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <button onClick={() => setShowAddEvent(false)} className="rounded-full bg-secondary px-4 py-2 text-sm font-medium hover:bg-selected transition-colors">Cancel</button>
+                <button onClick={handleAddEvent} className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90">Create Event</button>
+              </div>
+            </div>
+          </div>
+          {showImageUpload && (
+            <EventImageUpload
+              currentImage={addForm.image_url || undefined}
+              onSelect={(url) => { setAddForm(f => ({ ...f, image_url: url })); setShowImageUpload(false); }}
+              onClose={() => setShowImageUpload(false)}
+            />
+          )}
+        </>
+      )}
+    </div>
   );
 }

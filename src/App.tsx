@@ -1,55 +1,83 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
-
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import EventDetail from "./pages/EventDetail";
-import Tasks from "./pages/Tasks";
-import Billing from "./pages/Billing";
-import Documents from "./pages/Documents";
-import Teams from "./pages/Teams";
-import Settings from "./pages/Settings";
-import PastEvents from "./pages/PastEvents";
-import JoinOrg from "./pages/JoinOrg";
-import NotFound from "./pages/NotFound";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { MockDataProvider } from "@/context/MockDataContext";
+import AppLayout from "@/components/AppLayout";
+import LoginPage from "@/pages/Login";
+import SignupPage from "@/pages/Signup";
+import RoleSelectionPage from "@/pages/RoleSelection";
+import DashboardPage from "@/pages/Dashboard";
+import EventsPage from "@/pages/Events";
+import EventDetailPage from "@/pages/EventDetail";
+import TasksPage from "@/pages/Tasks";
+import BillingPage from "@/pages/Billing";
+import DocumentsPage from "@/pages/Documents";
+import TeamsPage from "@/pages/Teams";
+import SettingsPage from "@/pages/Settings";
+import DepartmentsPage from "@/pages/Departments";
+import DeptEventDetailPage from "@/pages/DeptEventDetail";
+import NotificationsPage from "@/pages/Notifications";
+import PastEventsPage from "@/pages/PastEvents";
+import NotFound from "@/pages/NotFound";
+import JoinOrgPage from "@/pages/JoinOrg";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
+
+  return (
+    <Routes>
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage />} />
+      <Route path="/signup" element={isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />} />
+      <Route path="/onboarding/role" element={isAuthenticated ? <RoleSelectionPage /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="events/:id" element={<EventDetailPage />} />
+        <Route path="tasks" element={<TasksPage />} />
+        <Route path="billing" element={<BillingPage />} />
+        <Route path="documents" element={<DocumentsPage />} />
+        <Route path="teams" element={<TeamsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="departments" element={<DepartmentsPage />} />
+        <Route path="departments/:name" element={<DepartmentsPage />} />
+        <Route path="departments/:deptName/events/:eventId" element={<DeptEventDetailPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="past-events" element={<PastEventsPage />} />
+      </Route>
+      <Route path="/join/:token" element={<JoinOrgPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/events" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/events/:id" element={<EventDetail />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/billing" element={<Billing />} />
-            <Route path="/documents" element={<Documents />} />
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/past-events" element={<PastEvents />} />
-            <Route path="/join/:token" element={<JoinOrg />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <MockDataProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </TooltipProvider>
+      </MockDataProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

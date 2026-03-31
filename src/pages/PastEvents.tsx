@@ -1,46 +1,58 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { AppShell } from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { format } from "date-fns";
+import { useMockData, formatDate } from "@/context/MockDataContext";
+import { StatusBadge } from "@/components/StatusBadge";
+import { ArrowLeft } from "@phosphor-icons/react";
 
-export default function PastEvents() {
-  const { orgId } = useAuth();
+export default function PastEventsPage() {
   const navigate = useNavigate();
-  const [events, setEvents] = useState<any[]>([]);
+  const { events } = useMockData();
 
-  useEffect(() => {
-    if (!orgId) return;
-    supabase.from("events").select("*").eq("org_id", orgId)
-      .in("status", ["completed", "archived"])
-      .order("end_date", { ascending: false })
-      .then(({ data }) => setEvents(data || []));
-  }, [orgId]);
+  const pastEvents = events.filter(
+    e => e.status === "completed" || e.status === "archived"
+  );
 
   return (
-    <AppShell>
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Past Events</h1>
-        <div className="grid grid-cols-2 gap-3">
-          {events.length === 0 && <p className="col-span-2 text-muted-foreground">No past events</p>}
-          {events.map(event => (
-            <Card key={event.id} className="cursor-pointer hover:shadow-md" onClick={() => navigate(`/events/${event.id}`)}>
-              <CardContent className="p-4">
-                <h3 className="font-semibold">{event.name}</h3>
-                <p className="text-xs text-muted-foreground">{event.location}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {format(new Date(event.start_date), "MMM d")} - {format(new Date(event.end_date), "MMM d, yyyy")}
-                </p>
-                <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${event.status === "completed" ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                  {event.status}
-                </span>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="p-6 w-full">
+      <div className="flex items-center gap-3 mb-5">
+        <button onClick={() => navigate("/dashboard")} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-selected transition-colors">
+          <ArrowLeft size={16} />
+        </button>
+        <div>
+          <h1 className="text-xl font-semibold">Past Events</h1>
+          <p className="text-sm text-muted-foreground">{pastEvents.length} completed or archived events</p>
         </div>
       </div>
-    </AppShell>
+
+      {pastEvents.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-stroke">
+          <span className="text-3xl mb-3">📁</span>
+          <p className="text-sm font-medium mb-1">No past events</p>
+          <p className="text-sm text-muted-foreground">Completed and archived events will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+          {pastEvents.map(ev => {
+            const initials = ev.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+            return (
+              <button key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}
+                className="flex flex-col items-center text-center group">
+                <div className="w-20 h-20 rounded-full overflow-hidden mb-3 ring-2 ring-stroke group-hover:ring-foreground/30 transition-all">
+                  {ev.image_url ? (
+                    <img src={ev.image_url} alt={ev.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-lg font-bold">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+                <p className="font-medium text-sm truncate max-w-full">{ev.name}</p>
+                <p className="text-xs text-muted-foreground">{formatDate(ev.start_date)} – {formatDate(ev.end_date)}</p>
+                <StatusBadge status={ev.status} className="mt-1" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
