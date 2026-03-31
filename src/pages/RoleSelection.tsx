@@ -32,7 +32,7 @@ export default function RoleSelectionPage() {
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold">Choose your role</h1>
-          <p className="text-sm text-muted-foreground mt-2">This determines what you can access in Zero Hour Events</p>
+          <p className="text-sm text-muted-foreground mt-2">This determines what you can access in EveHead</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {roles.map(r => (
