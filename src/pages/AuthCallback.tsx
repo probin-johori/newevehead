@@ -60,6 +60,13 @@ export default function AuthCallbackPage() {
 
     const finalizeAuth = async () => {
       try {
+        const authError = searchParams.get("error");
+        const authErrorDescription = searchParams.get("error_description");
+
+        if (authError) {
+          throw new Error(authErrorDescription ?? authError);
+        }
+
         const tokens = getTokensFromUrl();
 
         if (tokens.access_token && tokens.refresh_token) {
@@ -97,7 +104,8 @@ export default function AuthCallbackPage() {
 
         if (cancelled) return;
         navigate(memberships && memberships.length > 0 ? "/dashboard" : "/onboarding", { replace: true });
-      } catch {
+      } catch (error) {
+        console.error("Auth callback failed", error);
         if (cancelled) return;
         setStatus("failed");
         window.setTimeout(() => navigate("/login", { replace: true }), 1200);
