@@ -38,11 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
+
     if (data) {
       setProfile({
         id: data.id,
@@ -52,16 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar_color: data.avatar_color || "#6b21a8",
         dept_name: data.dept_name || undefined,
       });
+      return;
     }
+
+    setProfile(null);
   };
 
   const fetchRole = async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
+    const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId).limit(1).single();
+
     if (data) {
       setRole(data.role as Role);
     } else {
@@ -76,38 +72,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
 
-        if (newSession?.user) {
-          // Use setTimeout to avoid Supabase client deadlock
-          setTimeout(async () => {
-            await Promise.all([
-              fetchProfile(newSession.user.id),
-              fetchRole(newSession.user.id),
-            ]);
+      if (newSession?.user) {
+        window.setTimeout(() => {
+          void Promise.all([fetchProfile(newSession.user.id), fetchRole(newSession.user.id)]).finally(() => {
             setLoading(false);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-          setLoading(false);
-        }
+          });
+        }, 0);
+      } else {
+        setProfile(null);
+        setRole(null);
+        setLoading(false);
       }
-    );
+    });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+    void supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (existingSession?.user) {
         setSession(existingSession);
         setUser(existingSession.user);
-        Promise.all([
-          fetchProfile(existingSession.user.id),
-          fetchRole(existingSession.user.id),
-        ]).then(() => setLoading(false));
+        void Promise.all([fetchProfile(existingSession.user.id), fetchRole(existingSession.user.id)]).finally(() => {
+          setLoading(false);
+        });
       } else {
         setLoading(false);
       }
@@ -117,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (name: string, email: string, password: string, orgName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -125,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: window.location.origin,
       },
     });
+
     return { error: error?.message ?? null };
   };
 
@@ -143,12 +134,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const selectRole = async (selectedRole: Role) => {
     if (!user) return { error: "Not authenticated" };
+
     const { error } = await supabase
       .from("user_roles")
       .upsert({ user_id: user.id, role: selectedRole }, { onConflict: "user_id,role" });
+
     if (!error) {
       setRole(selectedRole);
     }
+
     return { error: error?.message ?? null };
   };
 

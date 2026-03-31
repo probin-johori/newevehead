@@ -8,6 +8,7 @@ import { MockDataProvider } from "@/context/MockDataContext";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/Login";
 import SignupPage from "@/pages/Signup";
+import AuthCallbackPage from "@/pages/AuthCallback";
 import OnboardingPage from "@/pages/Onboarding";
 import RoleSelectionPage from "@/pages/RoleSelection";
 import DashboardPage from "@/pages/Dashboard";
@@ -34,8 +35,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [hasOrg, setHasOrg] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!user) { setHasOrg(null); return; }
-    supabase
+    if (!user) {
+      setHasOrg(null);
+      return;
+    }
+
+    void supabase
       .from("team_members")
       .select("id")
       .eq("user_id", user.id)
@@ -44,8 +49,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   if (loading || (isAuthenticated && hasOrg === null)) {
-    return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
   }
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (hasOrg === false) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
@@ -56,8 +66,12 @@ function AppRoutes() {
   const [hasOrg, setHasOrg] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!user) { setHasOrg(null); return; }
-    supabase
+    if (!user) {
+      setHasOrg(null);
+      return;
+    }
+
+    void supabase
       .from("team_members")
       .select("id")
       .eq("user_id", user.id)
@@ -65,17 +79,22 @@ function AppRoutes() {
       .then(({ data }) => setHasOrg(!!(data && data.length > 0)));
   }, [user]);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading…</p></div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
 
-  const authRedirect = isAuthenticated
-    ? (hasOrg === false ? "/onboarding" : "/dashboard")
-    : undefined;
+  const authRedirect = isAuthenticated ? (hasOrg === false ? "/onboarding" : "/dashboard") : undefined;
 
   return (
     <Routes>
-      <Route path="/login" element={isAuthenticated ? <Navigate to={authRedirect || "/dashboard"} /> : <LoginPage />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to={authRedirect || "/dashboard"} replace /> : <LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/onboarding" element={isAuthenticated ? (hasOrg === false ? <OnboardingPage /> : <Navigate to="/dashboard" />) : <Navigate to="/login" replace />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/onboarding" element={isAuthenticated ? (hasOrg === false ? <OnboardingPage /> : <Navigate to="/dashboard" replace />) : <Navigate to="/login" replace />} />
       <Route path="/onboarding/role" element={isAuthenticated ? <RoleSelectionPage /> : <Navigate to="/login" replace />} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
