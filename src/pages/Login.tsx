@@ -11,40 +11,36 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setLoading(true);
     setError("");
-    const redirectUri = redirect
-      ? `${window.location.origin}${redirect}`
-      : window.location.origin;
+
+    const redirectUri = `${window.location.origin}/auth/callback${
+      redirect ? `?next=${encodeURIComponent(redirect)}` : ""
+    }`;
+
     const { error: err } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: redirectUri,
       extraParams: { prompt: "select_account" },
     });
+
     setLoading(false);
     if (err) setError(err instanceof Error ? err.message : String(err));
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-4">
-      {/* Subtle gradient orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-rose-500/10 blur-[120px]" />
         <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-violet-500/10 blur-[120px]" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Logo + Branding */}
         <div className="mb-10 text-center">
           <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 text-xl font-bold text-white shadow-lg shadow-rose-500/25">
             EH
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            Welcome to EveHead
-          </h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Event management, simplified for teams.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Welcome to EveHead</h1>
+          <p className="mt-2 text-sm text-zinc-400">Event management, simplified for teams.</p>
         </div>
 
-        {/* Card */}
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 backdrop-blur-sm shadow-2xl">
           {error && (
             <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
@@ -67,14 +63,10 @@ export default function LoginPage() {
             {loading ? "Connecting…" : "Continue with Google"}
           </button>
 
-          <p className="mt-6 text-center text-xs text-zinc-500">
-            Sign in or sign up — we'll handle the rest.
-          </p>
+          <p className="mt-6 text-center text-xs text-zinc-500">Sign in or sign up — we'll handle the rest.</p>
         </div>
 
-        <p className="mt-6 text-center text-xs text-zinc-600">
-          By continuing, you agree to EveHead's Terms of Service.
-        </p>
+        <p className="mt-6 text-center text-xs text-zinc-600">By continuing, you agree to EveHead's Terms of Service.</p>
       </div>
     </div>
   );
