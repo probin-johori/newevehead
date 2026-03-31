@@ -16,6 +16,7 @@ export default function LoginPage() {
       : window.location.origin;
     const { error: err } = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: redirectUri,
+      extraParams: { prompt: "select_account" },
     });
     setLoading(false);
     if (err) setError(err instanceof Error ? err.message : String(err));
