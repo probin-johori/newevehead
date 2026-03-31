@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 type AuthCallbackStatus = "restoring" | "redirecting" | "failed";
@@ -50,8 +50,11 @@ const waitForSession = async (timeoutMs = 6000) => {
   });
 };
 
+const replaceTo = (path: string) => {
+  window.location.replace(path);
+};
+
 export default function AuthCallbackPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<AuthCallbackStatus>("restoring");
 
@@ -84,7 +87,7 @@ export default function AuthCallbackPage() {
 
         if (!session?.user) {
           setStatus("failed");
-          window.setTimeout(() => navigate("/login", { replace: true }), 1200);
+          window.setTimeout(() => replaceTo("/login"), 1200);
           return;
         }
 
@@ -92,7 +95,7 @@ export default function AuthCallbackPage() {
         setStatus("redirecting");
 
         if (nextPath && nextPath.startsWith("/")) {
-          navigate(nextPath, { replace: true });
+          replaceTo(nextPath);
           return;
         }
 
@@ -103,12 +106,12 @@ export default function AuthCallbackPage() {
           .limit(1);
 
         if (cancelled) return;
-        navigate(memberships && memberships.length > 0 ? "/dashboard" : "/onboarding", { replace: true });
+        replaceTo(memberships && memberships.length > 0 ? "/dashboard" : "/onboarding");
       } catch (error) {
         console.error("Auth callback failed", error);
         if (cancelled) return;
         setStatus("failed");
-        window.setTimeout(() => navigate("/login", { replace: true }), 1200);
+        window.setTimeout(() => replaceTo("/login"), 1200);
       }
     };
 
@@ -117,7 +120,7 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, searchParams]);
+  }, [searchParams]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
